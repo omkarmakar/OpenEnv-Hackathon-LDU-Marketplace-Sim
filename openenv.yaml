@@ -1,0 +1,87 @@
+name: openenv-smartgrid-marketsim
+version: "0.1.0"
+description: >
+  Multi-agent smart-grid market simulation where strategic bids are cleared by a market
+  and then corrected by a load dispatching unit to enforce physical feasibility.
+
+tags:
+  - openenv
+  - multi-agent
+  - market
+  - smart-grid
+  - long-horizon
+
+tasks:
+  - id: default
+    display_name: Strategic Bidding With Physical Dispatch
+    difficulty: medium
+    max_steps: 24
+    description: >
+      Agents bid into a market, then LDU enforces grid feasibility. Reward is based on
+      physically delivered outcomes under volatility and shock events.
+    success_threshold: 0.62
+
+action_space:
+  type: object
+  fields:
+    bids:
+      type: array
+      description: List of supply and demand bids from multiple agents
+    ev_charge_mwh:
+      type: float
+      min: 0.0
+    ev_discharge_mwh:
+      type: float
+      min: 0.0
+
+observation_space:
+  type: object
+  fields:
+    demand_mwh:
+      type: float
+    renewable_availability_mwh:
+      type: float
+    peaker_capacity_mwh:
+      type: float
+    ev_storage_mwh:
+      type: float
+    last_clearing_price:
+      type: float
+    shock_active:
+      type: bool
+
+reward:
+  type: object
+  fields:
+    score:
+      type: float
+      range: [0.0, 1.0]
+    demand_satisfaction_score:
+      type: float
+    cost_efficiency_score:
+      type: float
+    renewable_utilization_score:
+      type: float
+    stability_score:
+      type: float
+    infeasibility_penalty:
+      type: float
+    blackout_penalty:
+      type: float
+
+environment:
+  api: REST
+  framework: FastAPI
+  base_url: http://localhost:7860
+  endpoints:
+    - GET /health
+    - POST /reset
+    - POST /step
+    - GET /state
+    - GET /events
+    - GET /info
+    - POST /run-inference
+
+docker:
+  image: openenv-smartgrid-marketsim
+  port: 7860

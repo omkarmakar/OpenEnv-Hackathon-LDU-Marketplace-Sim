@@ -1,0 +1,98 @@
+from typing import Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field
+
+
+AgentRole = Literal[
+    "renewable_prosumer",
+    "ev_aggregator",
+    "peaker_plant",
+    "industrial_load",
+]
+BidType = Literal["supply", "demand"]
+
+
+class AgentBid(BaseModel):
+    agent_id: str = Field(..., description="Unique agent id")
+    role: AgentRole = Field(..., description="Agent role")
+    bid_type: BidType = Field(..., description="Supply or demand bid")
+    quantity_mwh: float = Field(..., ge=0.0, description="Bid quantity in MWh")
+    price_usd_per_mwh: float = Field(..., ge=0.0, description="Bid price")
+
+
+class JointAction(BaseModel):
+    bids: List[AgentBid] = Field(default_factory=list, description="Bids from all agents")
+    ev_charge_mwh: float = Field(0.0, ge=0.0, description="EV fleet charge command")
+    ev_discharge_mwh: float = Field(0.0, ge=0.0, description="EV fleet discharge command")
+
+
+class MarketObservation(BaseModel):
+    step: int
+    steps_taken: int
+    max_steps: int
+    demand_mwh: float
+    renewable_availability_mwh: float
+    peaker_capacity_mwh: float
+    ev_storage_mwh: float
+    ev_storage_capacity_mwh: float
+    last_clearing_price: float
+    leader_price_signal: float
+    scarcity_index: float
+    shock_active: bool
+    public_signal: str
+    schema_info: str
+    hint: Optional[str] = None
+    error_message: Optional[str] = None
+
+
+class MarketReward(BaseModel):
+    score: float = Field(..., ge=0.0, le=1.0)
+    reason: str
+    demand_satisfaction_score: float
+    cost_efficiency_score: float
+    renewable_utilization_score: float
+    stability_score: float
+    infeasibility_penalty: float
+    blackout_penalty: float
+
+
+class ResetRequest(BaseModel):
+    task_id: str = "default"
+    seed: Optional[int] = None
+
+
+class ResetResponse(BaseModel):
+    session_id: str
+    task_id: str
+    task_description: str
+    schema_info: str
+    steps_taken: int
+    observation: MarketObservation
+
+
+class StepRequest(BaseModel):
+    action: JointAction
+
+
+class StepResponse(BaseModel):
+    observation: MarketObservation
+    reward: MarketReward
+    done: bool
+    truncated: bool
+    info: Dict
+
+
+class StateResponse(BaseModel):
+    current_task_id: str
+    steps_taken: int
+    episode_done: bool
+    observation: Optional[MarketObservation] = None
+
+
+class EpisodeSummary(BaseModel):
+    average_reward: float
+    total_demand_met: float
+    total_cost: float
+    infeasible_actions: int
+    corrections: int
+    shock_response_score: float

@@ -1,0 +1,28 @@
+[project]
+name = "openenv-smartgrid-marketsim"
+version = "0.1.0"
+description = "Multi-agent smart-grid market simulator with LDU feasibility layer"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.115.5,<1",
+  "uvicorn>=0.32.1,<1",
+  "pydantic>=2.10.3,<3",
+  "pyyaml>=6.0.2,<7",
+  "matplotlib>=3.9.2,<4",
+]
+
+[project.optional-dependencies]
+openenv = [
+  "openenv-core>=0.2.0",
+]
+
+[project.scripts]
+server = "main:main"
+train-baseline = "smartgrid_mas.train_baseline:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["smartgrid_mas*"]
