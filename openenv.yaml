@@ -20,6 +20,22 @@ tasks:
       Agents bid into a market, then LDU enforces grid feasibility. Reward is based on
       physically delivered outcomes under volatility and shock events.
     success_threshold: 0.62
+  - id: long_horizon
+    display_name: Long Horizon Reliability Planning
+    difficulty: hard
+    max_steps: 48
+    description: >
+      Extended planning task with delayed effects and recurring scarcity windows.
+      Evaluates durable policy memory and low-volatility dispatch behavior.
+    success_threshold: 0.58
+  - id: stress_shock
+    display_name: Shock Stress Reliability
+    difficulty: hard
+    max_steps: 30
+    description: >
+      Shock-heavy scenario with renewable collapse and demand volatility.
+      Tests emergency adaptation and correction-aware decision quality.
+    success_threshold: 0.56
 
 action_space:
   type: object
@@ -79,8 +95,11 @@ environment:
     - POST /step
     - GET /state
     - GET /events
+    - GET /events/stream
     - GET /info
+    - POST /inject-shock
     - POST /run-inference
+    - GET /demo
 
 docker:
   image: openenv-smartgrid-marketsim

@@ -1,8 +1,11 @@
 import os
+import json
+import time
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from smartgrid_mas.engine.policies import (
@@ -11,6 +14,7 @@ from smartgrid_mas.engine.policies import (
     random_joint_action,
 )
 from smartgrid_mas.env import SmartGridMarketEnv
+from smartgrid_mas.demo_page import build_demo_html
 from smartgrid_mas.models import JointAction, ResetRequest, StepRequest
 
 
@@ -37,6 +41,10 @@ class InferenceRequest(BaseModel):
     seed: Optional[int] = 42
 
 
+class ShockRequest(BaseModel):
+    renewable_drop_mwh: float = 20.0
+
+
 @app.get("/")
 def root():
     return {
@@ -44,6 +52,7 @@ def root():
         "status": "ready",
         "docs": "/docs",
         "health": "/health",
+        "demo": "/demo",
     }
 
 
@@ -82,6 +91,42 @@ def events(session_id: Optional[str] = Query(default=None)):
         return env.events(session_id=session_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/events/stream")
+def events_stream(session_id: Optional[str] = Query(default=None), poll_ms: int = Query(default=650, ge=150, le=5000)):
+    try:
+        env.state(session_id=session_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def event_generator():
+        last_len = 0
+        while True:
+            data = env.events(session_id=session_id)
+            events_list = data.get("events", [])
+            if len(events_list) > last_len:
+                for item in events_list[last_len:]:
+                    yield f"data: {json.dumps(item)}\n\n"
+                last_len = len(events_list)
+            else:
+                yield ": keepalive\n\n"
+            time.sleep(poll_ms / 1000.0)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@app.post("/inject-shock")
+def inject_shock(request: ShockRequest, session_id: Optional[str] = Query(default=None)):
+    try:
+        return env.inject_shock(session_id=session_id, renewable_drop_mwh=request.renewable_drop_mwh)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/demo", response_class=HTMLResponse)
+def demo_page():
+    return HTMLResponse(build_demo_html())
 
 
 @app.get("/info")

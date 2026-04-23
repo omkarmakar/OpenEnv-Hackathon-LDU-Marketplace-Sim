@@ -1,46 +1,66 @@
 # OpenEnv Smart Grid MarketSim
 
-A new OpenEnv-compatible project for a hybrid hackathon narrative:
-- Theme 1: Multi-agent interactions
-- Theme 2: Long-horizon planning
-- Theme 3.1: Professional world modeling
+Hybrid hackathon submission aligned to:
+- Theme 1: Multi-Agent Interactions
+- Theme 2: Long-Horizon Planning
+- Theme 3.1: Professional World Modeling
 
-## Core idea
+## 1) Problem
 
-The simulator is intentionally multi-layered:
-1. Agents submit strategic market bids.
-2. A market-clearing engine computes tentative allocations and prices.
-3. A Load Dispatching Unit (LDU) enforces physical feasibility.
-4. Grid dynamics evolve with volatility and shock events.
-5. Reward is computed from physically delivered outcomes.
+LLM agents can optimize symbolic bids but still fail when actions must obey physical grid constraints.
+This environment closes that gap by forcing economic strategy through a physical dispatch layer.
 
-This creates tension between strategy and reality, which is the main differentiator.
+## 2) Environment
 
-## What is implemented in this first slice
+Pipeline:
+1. Multi-agent bid submission (supply and demand)
+2. Stackelberg-influenced market clearing
+3. Load Dispatching Unit (LDU) feasibility correction
+4. Grid dynamics evolution with volatility and shocks
+5. Reward computed on physically delivered outcomes
 
-- Multi-agent bid object with supply/demand bids.
-- Market clearing with matched quantities and clearing price.
-- Stackelberg-style leader price signal that reshapes bid books before clearing.
-- LDU feasibility corrections:
-  - power balance accounting
-  - EV storage constraints
-  - transmission/storage losses
-  - infeasibility correction logs
-- Long-horizon episode flow with shock event support.
-- Personality-aware strategy behavior (greedy, risk-averse, balanced, opportunistic).
-- Per-agent private view metrics in step/event outputs for richer multi-actor analysis.
-- Reward decomposition including infeasibility and blackout penalties.
-- REST API:
-  - GET /health
-  - POST /reset
-  - POST /step
-  - GET /state
-  - GET /events
-  - GET /info
-  - POST /run-inference
-- Baseline metric generation script with reward plot output.
+Key mechanics:
+- Agent personalities and partially private state views
+- Leader price signal influencing market behavior
+- Physical constraints: capacity, SOC, losses, correction logs
+- Long-horizon and stress-shock scenarios
 
-## Quickstart
+## 3) Why This Is Novel
+
+Most market simulations score planned strategy only.
+This simulator scores consequences after physical feasibility correction, creating a measurable strategy-vs-reality tension.
+
+## 4) Implemented Features
+
+- Core simulator, API, packaging, and baseline artifact generation
+- Interactive immersive demo route at `/demo` with:
+  - pseudo-3D multi-agent scene
+  - play/pause/step/speed controls
+  - shock injection control
+  - synchronized metrics timeline
+- Live event APIs:
+  - `GET /events`
+  - `GET /events/stream` (SSE)
+  - `POST /inject-shock`
+- Multi-scenario tasks:
+  - `default`
+  - `long_horizon`
+  - `stress_shock`
+
+## 5) API Contract
+
+- `GET /health`
+- `POST /reset`
+- `POST /step`
+- `GET /state`
+- `GET /events`
+- `GET /events/stream`
+- `POST /inject-shock`
+- `GET /info`
+- `POST /run-inference`
+- `GET /demo`
+
+## 6) Quickstart
 
 ### Local run
 
@@ -49,38 +69,22 @@ pip install -e .
 python main.py
 ```
 
-Server starts on port 7860.
-
-If you also want the OpenEnv framework package locally:
+### Optional extras
 
 ```powershell
 pip install -e .[openenv]
+pip install -e .[dev]
 ```
 
-### Baseline metrics and plot
+### Baseline and improved policy artifacts
 
 ```powershell
 python -m smartgrid_mas.train_baseline --episodes 30 --outdir artifacts
 ```
 
 Outputs:
-- artifacts/baseline_metrics.csv
-- artifacts/reward_comparison.png
-
-Alternative (after editable install):
-
-```powershell
-train-baseline --episodes 30 --outdir artifacts
-```
-
-### Inference policy modes
-
-The `/run-inference` endpoint supports:
-- `random`
-- `heuristic`
-- `adaptive` (Stackelberg-aware)
-
-You can also pass `personality` such as `balanced`, `risk_averse`, or `opportunistic`.
+- [artifacts/baseline_metrics.csv](artifacts/baseline_metrics.csv)
+- [artifacts/reward_comparison.png](artifacts/reward_comparison.png)
 
 ### Docker
 
@@ -89,8 +93,58 @@ docker build -t openenv-smartgrid-marketsim .
 docker run -p 7860:7860 openenv-smartgrid-marketsim
 ```
 
-## Next implementation milestones
+## 7) Training Notebook (Phase 3)
 
-1. Add interactive 3D frontend scene synchronized to /events stream.
-2. Add Unsloth or HF TRL Colab training notebook with real policy updates.
-3. Add full judging artifact checklist in README (HF Space link, mini-blog/video, plots).
+Colab-ready notebook:
+- [training/Colab_Unsloth_HF_TRL_Training.ipynb](training/Colab_Unsloth_HF_TRL_Training.ipynb)
+
+Notebook covers:
+- endpoint-connected rollouts
+- baseline vs adaptive comparisons
+- Unsloth/HF TRL fine-tuning scaffold
+
+## 8) Results and Evidence
+
+Current evidence artifacts:
+- reward curve plot
+- per-episode metric CSV
+- deterministic regression + API contract tests
+
+Recommended additions before final judging:
+- trained policy checkpoints
+- multi-run mean/std plots
+- ablation (without leader signal / without LDU correction)
+
+## 9) HF Space and Public Artifacts
+
+Replace placeholders before final submission:
+- HF Space URL: `https://huggingface.co/spaces/YOUR_ORG/openenv-smartgrid-marketsim`
+- Mini-blog URL: `https://huggingface.co/blog/YOUR_POST`
+- Demo video URL (<2 min): `https://youtube.com/watch?v=YOUR_VIDEO`
+- Slides URL: `https://docs.google.com/presentation/d/YOUR_DECK`
+
+## 10) Reproducibility Checklist
+
+1. Install dependencies and run server.
+2. Run baseline artifact script.
+3. Open `/demo` and run controlled scenario with shock injection.
+4. Run tests and include pass output in PR/submission notes.
+
+## 11) Tests (Phase 4)
+
+```powershell
+pytest -q
+```
+
+Test coverage includes:
+- market clearing correctness and leader signal behavior
+- LDU correction invariants
+- reward bound and consistency checks
+- deterministic seeded regression
+- API contract checks for core endpoints
+
+## 12) Submission Notes
+
+- Keep media external by URL (no large video binaries in repo)
+- Ensure HF Space URL is present and public
+- Freeze final commit before deadline

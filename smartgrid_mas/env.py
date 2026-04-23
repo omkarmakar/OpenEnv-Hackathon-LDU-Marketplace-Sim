@@ -15,7 +15,7 @@ from smartgrid_mas.models import (
     StateResponse,
     StepResponse,
 )
-from smartgrid_mas.tasks import TaskConfig, get_task
+from smartgrid_mas.tasks import TaskConfig, get_task, list_tasks
 
 
 SCHEMA_INFO = (
@@ -229,12 +229,31 @@ class SmartGridMarketEnv:
         session = self._get_session(session_id)
         return {"session_id": session.session_id, "events": session.event_log[-50:]}
 
+    def inject_shock(self, session_id: Optional[str] = None, renewable_drop_mwh: float = 20.0) -> Dict:
+        session = self._get_session(session_id)
+        before = session.renewable_mwh
+        session.renewable_mwh = max(0.0, session.renewable_mwh - max(0.0, renewable_drop_mwh))
+        session.shock_seen = True
+        event = {
+            "step": session.step,
+            "type": "manual_shock",
+            "renewable_before_mwh": round(before, 3),
+            "renewable_after_mwh": round(session.renewable_mwh, 3),
+            "drop_mwh": round(max(0.0, renewable_drop_mwh), 3),
+        }
+        session.event_log.append(event)
+        return {
+            "session_id": session.session_id,
+            "shock_event": event,
+            "observation": session.to_observation(),
+        }
+
     def get_schema(self) -> Dict:
         return {
             "action_schema": JointAction.model_json_schema(),
             "observation_schema": MarketObservation.model_json_schema(),
             "reward_schema": MarketReward.model_json_schema(),
-            "tasks": ["default"],
+            "tasks": list_tasks(),
             "notes": "Hybrid Theme 1+2+3.1 baseline implementation with LDU as core physical layer",
         }
 
