@@ -51,6 +51,26 @@ Open browser → `http://localhost:7860/demo`
 
 ## 7-Minute Judge Walkthrough
 
+## Pre-Demo Safety Lock (Mandatory)
+
+Before judges arrive, lock the run to deterministic behavior:
+
+```bash
+# Always use fixed seed in API tests and scripts
+curl -X POST http://localhost:7860/reset \
+  -H 'Content-Type: application/json' \
+  -d '{"task_id":"default","seed":42}'
+
+# Deterministic policy run
+curl -X POST http://localhost:7860/run-inference \
+  -H 'Content-Type: application/json' \
+  -d '{"policy":"adaptive","personality":"balanced","task_id":"default","seed":42}'
+```
+
+Never switch seed live. Never switch policy live unless asked.
+
+---
+
 ### **Segment 1: Problem Statement (1 min)**
 Show this image/diagram:
 ```
@@ -150,6 +170,46 @@ Reward (0–1)
 - Add voltage/frequency stability constraints
 - Deploy to Hugging Face Spaces
 - Integrate with robotics gym for hardware-in-the-loop
+
+---
+
+## Judge Attack Defense Cards
+
+### Attack 1: "Your story says optimization, but I see volatility."
+
+Use this exact answer:
+
+"We optimize feasible delivery, not unconstrained bids. Volatility appears when scarcity rises, and the LDU correction plus reward penalties push behavior back toward reliability."
+
+### Attack 2: "Isn't this just agent-based pricing?"
+
+Use this exact answer:
+
+"No. Pricing is only the first layer. Final score is based on physically delivered power after LDU feasibility correction, storage limits, and losses. Market-only behavior can look good economically but still lose in our environment."
+
+### Attack 3: "Why are agents doing that?"
+
+Use this exact answer:
+
+"Agent actions follow bounded incentives: scarcity and leader signal change bid prices and EV charge-discharge decisions. If an action is infeasible, LDU corrects it and the reward drops, so irrational behavior is not rewarded."
+
+### Attack 4: "Why does this matter beyond simulation?"
+
+Use this exact answer:
+
+"This is a pre-deployment decision-support sandbox for grid operators. It helps test whether market rules preserve reliability before rollout in DER-heavy grids."
+
+---
+
+## Three-Layer Demo Fallback Plan
+
+Always prepare all three layers:
+
+1. Live deterministic demo (`/demo` with seed 42)
+2. Recorded deterministic run (same seed, same task, same policy)
+3. Slide fallback with 8-10 screenshots and metrics snapshots
+
+If the live run fails, switch to recorded backup immediately and continue the same script.
 
 ---
 

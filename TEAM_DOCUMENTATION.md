@@ -17,16 +17,117 @@
 
 ---
 
+## Judge Risk Mitigation Playbook
+
+This section addresses the exact failure modes that often sink strong technical demos.
+
+### 1) Model-Narrative Mismatch (Physics vs Economics vs Pitch)
+
+Use one governing claim and force every artifact to support it.
+
+**Single governing claim template:**
+
+> Our system demonstrates reliable grid balancing under strategic bidding because physical feasibility correction (LDU) constrains agent behavior, using a Stackelberg-influenced market and multi-objective reward.
+
+**Alignment checklist (must all agree):**
+- Physics layer (`smartgrid_mas/engine/ldu.py`, `smartgrid_mas/engine/dynamics.py`): constraints, losses, shocks
+- Economics layer (`smartgrid_mas/engine/market.py`, `smartgrid_mas/engine/policies.py`): bidding incentives and price signal response
+- Story layer (slides + narration): "optimize under constraints," not "optimize at any cost"
+
+**Judge-proof one-liner when challenged:**
+
+"It optimizes feasible delivery, not unconstrained bids. If bids destabilize the grid, LDU corrections and penalties make that strategy lose."
+
+### 2) Simulation Feels Academic Instead of Product-Like
+
+Frame this as an operator decision-support product, not only as a simulator.
+
+**Product framing (always present):**
+- User: distribution operator, microgrid operator, market designer
+- Deployment: control-room decision support and policy stress-testing
+- Why now: DER volatility and renewable uncertainty require adaptive dispatch behavior
+- Decision improved: when to dispatch peaker/storage and how to set price signals before reliability degrades
+
+**Pitch sentence:**
+
+"This is a pre-deployment safety and policy sandbox for market rules under real dispatch constraints."
+
+### 3) Glue Failure (Integration Seams)
+
+Most demo failures come from seam errors, not core algorithms.
+
+**Hard rules for demo day:**
+- Run deterministic seed only (`seed=42`)
+- Use one pre-validated task flow (default task, adaptive policy)
+- Freeze dependency versions before demo
+- Disable ad-hoc parameter edits during live presentation
+
+**Integration contract checks:**
+- Units: all energy in MWh, all prices in USD/MWh
+- Timing: one step equals one market-clear plus one physics-correction cycle
+- Stability: confirm no negative storage, no unbounded prices, no invalid JSON
+
+**Demo mode protocol:**
+- Primary: deterministic live run
+- Secondary: recorded deterministic run (same seed and task)
+- Tertiary: screenshot + trajectory slide walkthrough
+
+### 4) Novelty Attack Defense
+
+Expected judge question: "Is this just agent-based pricing?"
+
+**Answer with explicit novelty stack:**
+1. Market output is not final action; LDU feasibility correction is mandatory.
+2. Reward is computed on physically delivered outcomes after losses/corrections.
+3. Stackelberg leader signal links market incentives to system reliability.
+4. Stress-shock scenarios test adaptation under regime shift, not static equilibrium.
+
+### 5) Demo Crash Prevention (No Single Point of Failure)
+
+You must carry three demo layers:
+
+1. Live deterministic demo (`/demo` and core API calls)
+2. Recorded backup (screen capture of full run)
+3. Fallback deck (state snapshots, metrics curve, event logs)
+
+If live fails, switch in under 10 seconds and continue narrative unchanged.
+
+### 6) Irrational Agent Behavior Risk
+
+If agent behavior looks arbitrary, trust drops immediately.
+
+**Required explanation frame:**
+- Equilibrium logic: bids shift with scarcity and leader signal
+- Incentive rationale: high scarcity raises marginal value of peaker/storage
+- Bounded assumptions: finite capacity, losses, and correction penalties
+
+**If behavior still looks noisy:** simplify to adaptive policy only for demo.
+
+### 7) Weak Why-This-Matters
+
+Pick one pain and anchor every slide to it.
+
+**Recommended primary pain for this project:**
+
+Grid resilience under renewable volatility.
+
+**Impact sentence:**
+
+"This environment helps operators test whether market rules preserve reliability before they are deployed in volatile DER-heavy grids."
+
+---
+
 ## Table of Contents
 
-1. [Team Role Assignments & Responsibilities](#team-roles)
-2. [System Architecture Overview](#system-architecture)
-3. [Role 1: LDU & Physics Specialist](#role-1-ldu--physics-specialist)
-4. [Role 2: Agent & Strategy Specialist](#role-2-agent--strategy-specialist)
-5. [Role 3: Integration, Narrative & Visualization Lead](#role-3-integration-narrative--visualization-lead)
-6. [Project Execution Playbook](#project-execution-playbook)
-7. [Validation & Testing](#validation--testing)
-8. [Demo Scenarios for Judges](#demo-scenarios-for-judges)
+1. [Judge Risk Mitigation Playbook](#judge-risk-mitigation-playbook)
+2. [Team Role Assignments & Responsibilities](#team-roles)
+3. [System Architecture Overview](#system-architecture)
+4. [Role 1: LDU & Physics Specialist](#role-1-ldu--physics-specialist)
+5. [Role 2: Agent & Strategy Specialist](#role-2-agent--strategy-specialist)
+6. [Role 3: Integration, Narrative & Visualization Lead](#role-3-integration-narrative--visualization-lead)
+7. [Project Execution Playbook](#project-execution-playbook)
+8. [Validation & Testing](#validation--testing)
+9. [Demo Scenarios for Judges](#demo-scenarios-for-judges)
 
 ---
 

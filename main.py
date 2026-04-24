@@ -33,6 +33,13 @@ app.add_middleware(
 
 env = SmartGridMarketEnv()
 
+DEMO_MODE_CONFIG = {
+    "policy": "adaptive",
+    "personality": "balanced",
+    "task_id": "default",
+    "seed": 42,
+}
+
 
 class InferenceRequest(BaseModel):
     policy: str = "heuristic"
@@ -43,6 +50,47 @@ class InferenceRequest(BaseModel):
 
 class ShockRequest(BaseModel):
     renewable_drop_mwh: float = 20.0
+
+
+def _rollout_inference(request: InferenceRequest) -> dict:
+    reset_resp = env.reset(task_id=request.task_id, seed=request.seed)
+    sid = reset_resp.session_id
+    obs = reset_resp.observation
+
+    rng = __import__("random").Random(request.seed)
+    trajectory = []
+    while True:
+        if request.policy == "random":
+            action = random_joint_action(obs, rng)
+        elif request.policy == "adaptive":
+            action = adaptive_stackelberg_action(obs, personality=request.personality)
+        else:
+            action = heuristic_joint_action(obs, personality=request.personality)
+
+        result = env.step(action=action, session_id=sid)
+        trajectory.append(
+            {
+                "step": len(trajectory) + 1,
+                "action": action.model_dump(),
+                "reward": result.reward.model_dump(),
+                "info": result.info,
+            }
+        )
+        obs = result.observation
+        if result.done:
+            break
+
+    avg_reward = sum(t["reward"]["score"] for t in trajectory) / max(1, len(trajectory))
+    return {
+        "success": True,
+        "policy": request.policy,
+        "personality": request.personality,
+        "task_id": request.task_id,
+        "seed": request.seed,
+        "steps": len(trajectory),
+        "average_reward": round(avg_reward, 4),
+        "trajectory": trajectory,
+    }
 
 
 @app.get("/")
@@ -136,42 +184,19 @@ def info():
 
 @app.post("/run-inference")
 def run_inference(request: InferenceRequest):
-    reset_resp = env.reset(task_id=request.task_id, seed=request.seed)
-    sid = reset_resp.session_id
-    obs = reset_resp.observation
+    return _rollout_inference(request)
 
-    rng = __import__("random").Random(request.seed)
-    trajectory = []
-    while True:
-        if request.policy == "random":
-            action = random_joint_action(obs, rng)
-        elif request.policy == "adaptive":
-            action = adaptive_stackelberg_action(obs, personality=request.personality)
-        else:
-            action = heuristic_joint_action(obs, personality=request.personality)
 
-        result = env.step(action=action, session_id=sid)
-        trajectory.append(
-            {
-                "step": len(trajectory) + 1,
-                "action": action.model_dump(),
-                "reward": result.reward.model_dump(),
-                "info": result.info,
-            }
-        )
-        obs = result.observation
-        if result.done:
-            break
-
-    avg_reward = sum(t["reward"]["score"] for t in trajectory) / max(1, len(trajectory))
-    return {
-        "success": True,
-        "policy": request.policy,
-        "personality": request.personality,
-        "steps": len(trajectory),
-        "average_reward": round(avg_reward, 4),
-        "trajectory": trajectory,
-    }
+@app.post("/run-demo-mode")
+def run_demo_mode():
+    request = InferenceRequest(**DEMO_MODE_CONFIG)
+    result = _rollout_inference(request)
+    result["mode"] = "demo"
+    result["deterministic"] = True
+    result["governing_claim"] = (
+        "Reliable grid balancing emerges when strategic bidding is constrained by physical feasibility."
+    )
+    return result
 
 
 def main() -> None:

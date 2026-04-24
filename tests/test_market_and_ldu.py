@@ -15,6 +15,9 @@ def test_market_clearing_and_leader_adjustment():
     assert out["leader_adjusted_bids"] >= 1
     assert out["total_supply_offered"] == 70
     assert out["total_demand_bid"] == 50
+    assert out["cleared_mwh"] <= out["total_supply_offered"]
+    assert out["cleared_mwh"] <= out["total_demand_bid"]
+    assert out["clearing_price"] >= 0
 
 
 def test_ldu_correction_invariants():

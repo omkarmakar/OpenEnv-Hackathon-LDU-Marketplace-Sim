@@ -23,6 +23,7 @@ dev = [
 [project.scripts]
 server = "main:main"
 train-baseline = "smartgrid_mas.train_baseline:main"
+generate-demo-artifacts = "smartgrid_mas.generate_demo_artifacts:main"
 
 [build-system]
 requires = ["setuptools>=68"]
