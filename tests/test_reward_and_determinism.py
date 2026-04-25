@@ -11,11 +11,24 @@ def test_reward_bounds_and_consistency():
         "correction_count": 2,
         "storage_loss_mwh": 0.4,
         "renewable_dispatch_mwh": 50.0,
+        "reserve_requirement_mwh": 12.0,
+        "reserve_shortfall_mwh": 2.0,
+        "ramp_violation_mwh": 1.0,
+        "startup_cost_usd": 50.0,
+        "emissions_tco2": 8.0,
     }
-    reward = compute_reward(dispatch=dispatch, clearing_price=52, demand_mwh=100, prior_gap=-3)
+    reward = compute_reward(
+        dispatch=dispatch,
+        clearing_price=52,
+        demand_mwh=100,
+        prior_gap=-3,
+        carbon_price_usd_per_tco2=50.0,
+    )
     assert 0.0 <= reward.score <= 1.0
     assert reward.blackout_penalty >= 0.0
     assert reward.infeasibility_penalty >= 0.0
+    assert reward.reserve_adequacy_score >= 0.0
+    assert reward.emissions_intensity_tco2_per_mwh >= 0.0
 
 
 def test_seeded_episode_regression_deterministic():

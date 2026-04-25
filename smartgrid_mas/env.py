@@ -51,6 +51,20 @@ class Session:
     reward_history: list = field(default_factory=list)
     event_log: list = field(default_factory=list)
     shock_seen: bool = False
+    contingency_seen: bool = False
+    contingency_type: str = "none"
+    operator_override_enabled: bool = False
+    forecast_demand_mwh: float = 0.0
+    forecast_renewable_mwh: float = 0.0
+    load_forecast_error_mwh: float = 0.0
+    renewable_forecast_error_mwh: float = 0.0
+    previous_peaker_dispatch_mwh: float = 0.0
+    previous_ev_discharge_mwh: float = 0.0
+    peaker_online: bool = False
+    contingency_peaker_multiplier: float = 1.0
+    contingency_loss_multiplier: float = 1.0
+    total_emissions_tco2: float = 0.0
+    blackout_steps: int = 0
     personalities: Dict[str, str] = field(default_factory=dict)
 
     def to_observation(self, hint: Optional[str] = None, error_message: Optional[str] = None) -> MarketObservation:
@@ -72,6 +86,13 @@ class Session:
             leader_price_signal=round(self.base_price, 3),
             scarcity_index=round(max(0.0, (self.demand_mwh - self.renewable_mwh) / max(self.demand_mwh, 1e-6)), 4),
             shock_active=self.shock_seen,
+            forecast_demand_mwh=round(self.forecast_demand_mwh, 3),
+            forecast_renewable_mwh=round(self.forecast_renewable_mwh, 3),
+            load_forecast_error_mwh=round(self.load_forecast_error_mwh, 3),
+            renewable_forecast_error_mwh=round(self.renewable_forecast_error_mwh, 3),
+            contingency_active=self.contingency_seen,
+            contingency_type=self.contingency_type,
+            operator_override_enabled=self.operator_override_enabled,
             public_signal=public_signal,
             schema_info=SCHEMA_INFO,
             hint=hint,
@@ -103,6 +124,8 @@ class SmartGridMarketEnv:
                 "industrial_1": rng.choice(["risk_averse", "balanced"]),
                 "ev_1": rng.choice(["balanced", "risk_averse"]),
             },
+            forecast_demand_mwh=task.initial_demand_mwh,
+            forecast_renewable_mwh=task.initial_renewable_mwh,
         )
         self._sessions[session.session_id] = session
         self._latest_session_id = session.session_id
@@ -139,16 +162,29 @@ class SmartGridMarketEnv:
                 info={"error": "episode_done"},
             )
 
-        market = clear_market(action.bids, leader_price_signal=session.base_price)
+        applied_action = action
+        if session.operator_override_enabled:
+            applied_action = heuristic_joint_action(session.to_observation(), personality="risk_averse")
+        market = clear_market(applied_action.bids, leader_price_signal=session.base_price)
         dispatch, next_storage = enforce_dispatch(
             market_result=market,
             demand_mwh=session.demand_mwh,
             renewable_available_mwh=session.renewable_mwh,
-            peaker_capacity_mwh=session.peaker_capacity_mwh,
+            peaker_capacity_mwh=session.peaker_capacity_mwh * session.contingency_peaker_multiplier,
             ev_storage_mwh=session.ev_storage_mwh,
             ev_storage_capacity_mwh=session.ev_storage_capacity_mwh,
-            ev_charge_mwh=action.ev_charge_mwh,
-            ev_discharge_mwh=action.ev_discharge_mwh,
+            ev_charge_mwh=applied_action.ev_charge_mwh,
+            ev_discharge_mwh=applied_action.ev_discharge_mwh,
+            reserve_margin_ratio=session.task.reserve_margin_ratio,
+            peaker_ramp_limit_mwh=session.task.peaker_ramp_limit_mwh,
+            ev_ramp_limit_mwh=session.task.ev_ramp_limit_mwh,
+            previous_peaker_dispatch_mwh=session.previous_peaker_dispatch_mwh,
+            previous_ev_discharge_mwh=session.previous_ev_discharge_mwh,
+            previous_peaker_online=session.peaker_online,
+            peaker_startup_cost_usd=session.task.peaker_startup_cost_usd,
+            peaker_emission_factor_tco2_per_mwh=session.task.peaker_emission_factor_tco2_per_mwh,
+            transmission_loss_multiplier=session.contingency_loss_multiplier,
+            carbon_price_usd_per_tco2=session.task.carbon_price_usd_per_tco2,
         )
 
         reward = compute_reward(
@@ -156,17 +192,25 @@ class SmartGridMarketEnv:
             clearing_price=market["clearing_price"] or session.base_price,
             demand_mwh=session.demand_mwh,
             prior_gap=session.prior_gap,
+            carbon_price_usd_per_tco2=session.task.carbon_price_usd_per_tco2,
         )
 
         session.step += 1
         session.ev_storage_mwh = next_storage
         session.last_clearing_price = market["clearing_price"] or session.base_price
         session.prior_gap = dispatch["delivered_supply_mwh"] - session.demand_mwh
+        session.previous_peaker_dispatch_mwh = dispatch.get("peaker_dispatch_mwh", 0.0)
+        session.previous_ev_discharge_mwh = dispatch.get("ev_discharge_mwh", 0.0)
+        session.peaker_online = bool(dispatch.get("peaker_online", False))
         session.correction_count += dispatch["correction_count"]
         if dispatch["correction_count"] > 0:
             session.infeasible_actions += 1
         session.total_demand_met += min(session.demand_mwh, dispatch["delivered_supply_mwh"])
-        session.total_cost += dispatch["delivered_supply_mwh"] * session.last_clearing_price
+        energy_cost = dispatch["delivered_supply_mwh"] * session.last_clearing_price
+        session.total_cost += energy_cost + dispatch.get("startup_cost_usd", 0.0) + dispatch.get("emissions_cost_usd", 0.0)
+        session.total_emissions_tco2 += dispatch.get("emissions_tco2", 0.0)
+        if dispatch["unmet_demand_mwh"] > 0.0:
+            session.blackout_steps += 1
         session.reward_history.append(reward.score)
 
         private_views = self._build_private_agent_views(session, market, dispatch)
@@ -183,6 +227,14 @@ class SmartGridMarketEnv:
         session.renewable_mwh = next_renewable
         session.base_price = next_price
         session.shock_seen = session.shock_seen or dyn_info["shock_active"]
+        session.contingency_seen = session.contingency_seen or dyn_info.get("contingency_active", False)
+        session.contingency_type = dyn_info.get("contingency_type", "none")
+        session.forecast_demand_mwh = dyn_info.get("forecast_demand_mwh", session.demand_mwh)
+        session.forecast_renewable_mwh = dyn_info.get("forecast_renewable_mwh", session.renewable_mwh)
+        session.load_forecast_error_mwh = dyn_info.get("load_forecast_error_mwh", 0.0)
+        session.renewable_forecast_error_mwh = dyn_info.get("renewable_forecast_error_mwh", 0.0)
+        session.contingency_peaker_multiplier = dyn_info.get("peaker_capacity_multiplier", 1.0)
+        session.contingency_loss_multiplier = dyn_info.get("transmission_loss_multiplier", 1.0)
 
         event = {
             "step": session.step,
@@ -206,10 +258,13 @@ class SmartGridMarketEnv:
                 "avg_reward": round(sum(session.reward_history) / len(session.reward_history), 4),
                 "total_demand_met_mwh": round(session.total_demand_met, 3),
                 "total_cost_usd": round(session.total_cost, 3),
+                "total_emissions_tco2": round(session.total_emissions_tco2, 4),
+                "blackout_steps": session.blackout_steps,
                 "infeasible_actions": session.infeasible_actions,
                 "ldu_corrections": session.correction_count,
                 "leader_adjusted_bids": market["leader_adjusted_bids"],
                 "personality_map": session.personalities,
+                "operator_override_enabled": session.operator_override_enabled,
             },
         }
 
@@ -274,6 +329,21 @@ class SmartGridMarketEnv:
             "reward_schema": MarketReward.model_json_schema(),
             "tasks": list_tasks(),
             "notes": "Hybrid Theme 1+2+3.1 baseline implementation with LDU as core physical layer",
+        }
+
+    def set_operator_override(self, enabled: bool, session_id: Optional[str] = None) -> Dict:
+        session = self._get_session(session_id)
+        session.operator_override_enabled = bool(enabled)
+        event = {
+            "step": session.step,
+            "type": "operator_override",
+            "enabled": session.operator_override_enabled,
+        }
+        session.event_log.append(event)
+        return {
+            "session_id": session.session_id,
+            "operator_override_enabled": session.operator_override_enabled,
+            "event": event,
         }
 
     def _get_session(self, session_id: Optional[str]) -> Session:

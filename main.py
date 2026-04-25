@@ -57,6 +57,17 @@ class PolicyActionRequest(BaseModel):
     personality: str = "balanced"
 
 
+class OverrideRequest(BaseModel):
+    enabled: bool = True
+
+
+class ResilienceDemoRequest(BaseModel):
+    task_id: str = "stress_shock"
+    seed: int = 314
+    baseline_policy: str = "random"
+    candidate_policy: str = "adaptive"
+
+
 def _rollout_inference(request: InferenceRequest) -> dict:
     reset_resp = env.reset(task_id=request.task_id, seed=request.seed)
     sid = reset_resp.session_id
@@ -96,6 +107,41 @@ def _rollout_inference(request: InferenceRequest) -> dict:
         "average_reward": round(avg_reward, 4),
         "trajectory": trajectory,
     }
+
+
+def _run_policy_episode(task_id: str, seed: int, policy: str, personality: str = "balanced") -> dict:
+    reset_resp = env.reset(task_id=task_id, seed=seed)
+    sid = reset_resp.session_id
+    obs = reset_resp.observation
+    rng = __import__("random").Random(seed)
+    rewards = []
+    blackout_steps = 0
+    unmet_energy = 0.0
+    while True:
+        if policy == "random":
+            action = random_joint_action(obs, rng)
+        elif policy == "adaptive":
+            action = adaptive_stackelberg_action(obs, personality=personality)
+        else:
+            action = heuristic_joint_action(obs, personality=personality)
+        result = env.step(action=action, session_id=sid)
+        rewards.append(result.reward.score)
+        dispatch = result.info["dispatch"]
+        unmet = dispatch.get("unmet_demand_mwh", 0.0)
+        unmet_energy += unmet
+        if unmet > 0.0:
+            blackout_steps += 1
+        obs = result.observation
+        if result.done:
+            summary = result.info["summary"]
+            return {
+                "avg_reward": round(sum(rewards) / max(1, len(rewards)), 4),
+                "total_cost_usd": summary["total_cost_usd"],
+                "total_emissions_tco2": summary.get("total_emissions_tco2", 0.0),
+                "blackout_steps": blackout_steps,
+                "unmet_energy_mwh": round(unmet_energy, 3),
+                "corrections": summary.get("ldu_corrections", 0),
+            }
 
 
 @app.get("/")
@@ -186,6 +232,14 @@ def inject_shock(request: ShockRequest, session_id: Optional[str] = Query(defaul
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/operator-override")
+def operator_override(request: OverrideRequest, session_id: Optional[str] = Query(default=None)):
+    try:
+        return env.set_operator_override(enabled=request.enabled, session_id=session_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.get("/demo", response_class=HTMLResponse)
 def demo_page():
     return HTMLResponse(build_demo_html())
@@ -211,6 +265,35 @@ def run_demo_mode():
         "Reliable grid balancing emerges when strategic bidding is constrained by physical feasibility."
     )
     return result
+
+
+@app.post("/run-resilience-demo")
+def run_resilience_demo(request: ResilienceDemoRequest):
+    baseline = _run_policy_episode(
+        task_id=request.task_id,
+        seed=request.seed,
+        policy=request.baseline_policy,
+    )
+    candidate = _run_policy_episode(
+        task_id=request.task_id,
+        seed=request.seed,
+        policy=request.candidate_policy,
+    )
+    prevented = baseline["blackout_steps"] > candidate["blackout_steps"]
+    return {
+        "task_id": request.task_id,
+        "seed": request.seed,
+        "baseline_policy": request.baseline_policy,
+        "candidate_policy": request.candidate_policy,
+        "baseline": baseline,
+        "candidate": candidate,
+        "catastrophic_failure_prevented": prevented,
+        "narrative": (
+            "Candidate policy preserved service continuity under contingency and forecast uncertainty."
+            if prevented
+            else "Candidate policy did not outperform baseline on blackout prevention for this seed."
+        ),
+    }
 
 
 def main() -> None:

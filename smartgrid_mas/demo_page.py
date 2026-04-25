@@ -590,12 +590,15 @@ def build_demo_html() -> str:
     <button class="btn" id="stepBtn">STEP</button>
     <button class="btn" id="playBtn">▶ RUN</button>
     <button class="btn" id="pauseBtn">⏹ STOP</button>
+    <button class="btn" id="overrideBtn">🧑‍💻 OVERRIDE OFF</button>
     <button class="btn danger" id="shockBtn">⚡ SHOCK</button>
+    <button class="btn" id="resilienceBtn">🏆 RESILIENCE DEMO</button>
   </div>
 
 <script>
 const API = '';
 let sessionId = null, timer = null;
+let operatorOverride = false;
 const historyData = [];
 let dayCurveData = [];
 const runtimeStats = { steps: 0, correctionSteps: 0, zeroUnmetSteps: 0, recoveryEvents: 0, prevUnmet: 0, cumulativeReward: 0 };
@@ -784,11 +787,11 @@ function updateScore(r) {
 }
 
 // NEW MODULE UPDATES
-function updateGridHealth(renew, peak, demand) {
+function updateGridHealth(renew, peak, demand, frequencyHz, reserveMw) {
   // Grid frequency (49.5-50.5 Hz nominal)
   const freqBase = 50.0;
   const stressRatio = Math.min(1, demand / (renew + peak));
-  const freqVal = freqBase - (stressRatio * 0.5);
+  const freqVal = frequencyHz || (freqBase - (stressRatio * 0.5));
   document.getElementById('freqVal').textContent = freqVal.toFixed(2);
   
   // Voltage stability (0-100%)
@@ -796,7 +799,7 @@ function updateGridHealth(renew, peak, demand) {
   document.getElementById('voltVal').textContent = Math.round(voltVal);
   
   // Spinning reserve
-  const reserve = Math.max(0, (renew + peak) * 0.2 - demand * 0.1);
+  const reserve = reserveMw ?? Math.max(0, (renew + peak) * 0.2 - demand * 0.1);
   document.getElementById('reserveVal').textContent = Math.round(reserve);
   
   // Update health bars
@@ -1134,7 +1137,13 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   updateScore(rew);
   
   // NEW MODULE UPDATES
-  updateGridHealth(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, d);
+  updateGridHealth(
+    disp.renewable_dispatch_mwh,
+    disp.peaker_dispatch_mwh,
+    d,
+    disp.frequency_hz,
+    disp.spinning_reserve_mwh
+  );
   const reserveHeadroom = Math.max(0, p - disp.peaker_dispatch_mwh);
   updatePowerMix(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh);
   document.getElementById('reserveHeadroom').textContent = reserveHeadroom.toFixed(0) + ' MW';
@@ -1174,11 +1183,35 @@ async function shock() {
   if (threatList) threatList.innerHTML = '<div class="threat">⚡ Manual shock: -25 MW</div>';
 }
 
+async function toggleOverride() {
+  if (!sessionId) return;
+  operatorOverride = !operatorOverride;
+  await api('/operator-override?session_id=' + sessionId, {enabled: operatorOverride});
+  const btn = document.getElementById('overrideBtn');
+  if (btn) {
+    btn.textContent = operatorOverride ? '🧑‍💻 OVERRIDE ON' : '🧑‍💻 OVERRIDE OFF';
+    btn.style.background = operatorOverride ? 'var(--yellow)' : '';
+  }
+  log(operatorOverride ? 'Operator override enabled' : 'Operator override disabled', 'info');
+}
+
+async function resilienceDemo() {
+  const task = document.getElementById('taskSel').value || 'stress_shock';
+  const out = await api('/run-resilience-demo', {task_id: task, seed: 314, baseline_policy: 'random', candidate_policy: 'adaptive'});
+  const prevented = out.catastrophic_failure_prevented;
+  const msg = prevented
+    ? `Resilience demo success: blackouts ${out.baseline.blackout_steps} -> ${out.candidate.blackout_steps}`
+    : `Resilience demo: no blackout improvement (${out.baseline.blackout_steps} vs ${out.candidate.blackout_steps})`;
+  log(msg, prevented ? 'info' : 'warn');
+}
+
 document.getElementById('resetBtn').onclick = () => { pause(); reset(); };
 document.getElementById('stepBtn').onclick = () => { pause(); step(); };
 document.getElementById('playBtn').onclick = play;
 document.getElementById('pauseBtn').onclick = pause;
+document.getElementById('overrideBtn').onclick = toggleOverride;
 document.getElementById('shockBtn').onclick = shock;
+document.getElementById('resilienceBtn').onclick = resilienceDemo;
 
 reset();
 </script>

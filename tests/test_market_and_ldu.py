@@ -31,6 +31,15 @@ def test_ldu_correction_invariants():
         ev_storage_capacity_mwh=20,
         ev_charge_mwh=8,
         ev_discharge_mwh=10,
+        reserve_margin_ratio=0.2,
+        peaker_ramp_limit_mwh=5.0,
+        ev_ramp_limit_mwh=2.0,
+        previous_peaker_dispatch_mwh=0.0,
+        previous_ev_discharge_mwh=0.0,
+        previous_peaker_online=False,
+        peaker_startup_cost_usd=200.0,
+        peaker_emission_factor_tco2_per_mwh=0.45,
+        carbon_price_usd_per_tco2=50.0,
     )
 
     assert dispatch["correction_count"] >= 1
@@ -38,3 +47,7 @@ def test_ldu_correction_invariants():
     assert dispatch["delivered_supply_mwh"] >= 0
     assert dispatch["unmet_demand_mwh"] >= 0
     assert dispatch["oversupply_mwh"] >= 0
+    assert dispatch["reserve_requirement_mwh"] >= 0
+    assert dispatch["spinning_reserve_mwh"] >= 0
+    assert dispatch["emissions_tco2"] >= 0
+    assert dispatch["frequency_hz"] <= 50.2

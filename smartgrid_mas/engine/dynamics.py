@@ -27,6 +27,7 @@ def evolve_grid(
     rng: random.Random,
 ) -> Tuple[float, float, float, Dict]:
     shock_active = step == task.shock_step
+    contingency_active = step == task.contingency_step and task.contingency_type != "none"
 
     demand_noise = rng.gauss(0.0, task.demand_volatility)
     renewable_noise = rng.gauss(0.0, task.renewable_volatility)
@@ -41,6 +42,17 @@ def evolve_grid(
     next_demand = max(20.0, next_demand)
     next_renewable = max(0.0, next_renewable)
 
+    forecast_demand = max(20.0, next_demand + rng.gauss(0.0, task.load_forecast_sigma))
+    forecast_renewable = max(0.0, next_renewable + rng.gauss(0.0, task.renewable_forecast_sigma))
+    peaker_capacity_multiplier = 1.0
+    transmission_loss_multiplier = 1.0
+    if contingency_active:
+        derate = max(0.0, min(task.contingency_derate_pct, 0.95))
+        if task.contingency_type == "peaker_trip":
+            peaker_capacity_multiplier = 1.0 - derate
+        elif task.contingency_type == "transmission_derate":
+            transmission_loss_multiplier = 1.0 + derate
+
     scarcity_ratio = max(0.0, (next_demand - next_renewable) / 300.0)
     implied_price = base_price_usd_per_mwh * (1.0 + scarcity_ratio)
     next_price = min(200.0, max(5.0, implied_price))
@@ -51,9 +63,17 @@ def evolve_grid(
         round(next_price, 3),
         {
             "shock_active": shock_active,
+            "contingency_active": contingency_active,
+            "contingency_type": task.contingency_type if contingency_active else "none",
+            "peaker_capacity_multiplier": round(peaker_capacity_multiplier, 4),
+            "transmission_loss_multiplier": round(transmission_loss_multiplier, 4),
             "demand_noise": round(demand_noise, 3),
             "renewable_noise": round(renewable_noise, 3),
             "demand_multiplier": round(demand_multiplier, 4),
             "renewable_multiplier": round(renewable_multiplier, 4),
+            "forecast_demand_mwh": round(forecast_demand, 3),
+            "forecast_renewable_mwh": round(forecast_renewable, 3),
+            "load_forecast_error_mwh": round(forecast_demand - next_demand, 3),
+            "renewable_forecast_error_mwh": round(forecast_renewable - next_renewable, 3),
         },
     )

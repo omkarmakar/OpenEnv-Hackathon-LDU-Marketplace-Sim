@@ -39,6 +39,13 @@ class MarketObservation(BaseModel):
     leader_price_signal: float
     scarcity_index: float
     shock_active: bool
+    forecast_demand_mwh: float = 0.0
+    forecast_renewable_mwh: float = 0.0
+    load_forecast_error_mwh: float = 0.0
+    renewable_forecast_error_mwh: float = 0.0
+    contingency_active: bool = False
+    contingency_type: str = "none"
+    operator_override_enabled: bool = False
     public_signal: str
     schema_info: str
     hint: Optional[str] = None
@@ -52,6 +59,8 @@ class MarketReward(BaseModel):
     cost_efficiency_score: float
     renewable_utilization_score: float
     stability_score: float
+    reserve_adequacy_score: float = 0.0
+    emissions_intensity_tco2_per_mwh: float = 0.0
     infeasibility_penalty: float
     blackout_penalty: float
 
