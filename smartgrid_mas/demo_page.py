@@ -144,13 +144,14 @@ def build_demo_html() -> str:
     .donut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 9px; margin-top: 8px; }
     .donut-item { display: flex; gap: 4px; align-items: center; }
     .donut-swatch { width: 8px; height: 8px; border-radius: 2px; }
+    .donut-track { stroke: #22303f; opacity: 0.9; }
     
     /* FORECAST VS ACTUAL */
     .forecast-chart { width: 100%; height: 100%; background: var(--bg); border-radius: 4px; }
     .forecast-stat { display: flex; justify-content: space-between; font-size: 9px; margin: 4px 0; padding: 4px 0; border-bottom: 1px solid var(--border); }
     
     /* CONGESTION HEATMAP */
-    .heatmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .heatmap-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .heatmap-cell { background: var(--bg); padding: 8px; border-radius: 4px; text-align: center; border-left: 3px solid var(--border); }
     .heatmap-cell.green { border-color: var(--green); }
     .heatmap-cell.yellow { border-color: var(--yellow); }
@@ -371,22 +372,18 @@ def build_demo_html() -> str:
           <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Live Generation</div>
           <div class="donut-container">
             <svg class="donut-chart" viewBox="0 0 100 100">
-              <!-- Solar segment -->
-              <circle cx="50" cy="50" r="30" fill="none" stroke="#22c55e" stroke-width="15" stroke-dasharray="62 188" stroke-dashoffset="47" opacity="0.8"/>
-              <!-- Power Plant segment -->
-              <circle cx="50" cy="50" r="30" fill="none" stroke="#eab308" stroke-width="15" stroke-dasharray="50 188" stroke-dashoffset="-15" opacity="0.8"/>
-              <!-- Storage segment -->
-              <circle cx="50" cy="50" r="30" fill="none" stroke="#a855f7" stroke-width="15" stroke-dasharray="40 188" stroke-dashoffset="-65" opacity="0.8"/>
-              <!-- Reserve segment -->
-              <circle cx="50" cy="50" r="30" fill="none" stroke="#3b82f6" stroke-width="15" stroke-dasharray="36 188" stroke-dashoffset="-105" opacity="0.8"/>
-              <text x="50" y="55" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="bold">100%</text>
+              <circle cx="50" cy="50" r="30" fill="none" class="donut-track" stroke-width="15"/>
+              <circle id="mixSolar" cx="50" cy="50" r="30" fill="none" stroke="#22c55e" stroke-width="15" opacity="0.9" transform="rotate(-90 50 50)"/>
+              <circle id="mixPlant" cx="50" cy="50" r="30" fill="none" stroke="#eab308" stroke-width="15" opacity="0.9" transform="rotate(-90 50 50)"/>
+              <circle id="mixEV" cx="50" cy="50" r="30" fill="none" stroke="#a855f7" stroke-width="15" opacity="0.9" transform="rotate(-90 50 50)"/>
+              <text x="50" y="51" text-anchor="middle" fill="var(--text)" font-size="12" font-weight="bold" id="mixTotal">0 MW</text>
+              <text x="50" y="62" text-anchor="middle" fill="var(--dim)" font-size="7">LIVE MIX</text>
             </svg>
           </div>
           <div class="donut-legend">
             <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar 33%</span></div>
             <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Power Plant 27%</span></div>
-            <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>Storage 21%</span></div>
-            <div class="donut-item"><div class="donut-swatch" style="background:var(--blue)"></div><span>Reserve 19%</span></div>
+            <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>EV Discharge 40%</span></div>
           </div>
         </div>
         <div style="flex:1;margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
@@ -394,6 +391,7 @@ def build_demo_html() -> str:
           <div class="forecast-stat"><span>Forecast</span><span style="color:var(--cyan)">185 MW</span></div>
           <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
           <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
+          <div class="forecast-stat"><span>Reserve Headroom</span><span style="color:var(--blue)" id="reserveHeadroom">0 MW</span></div>
         </div>
       </div>
     </div>
@@ -417,29 +415,21 @@ def build_demo_html() -> str:
       <div class="panel-title">🔥 TRANSMISSION HEATMAP</div>
       <div class="panel-content">
         <div class="heatmap-grid">
-          <div class="heatmap-cell green">
-            <div class="heatmap-val">42%</div>
-            <div class="heatmap-lbl">Line A</div>
+          <div class="heatmap-cell green" id="cellSolarPlant">
+            <div class="heatmap-val" id="lineSolarPlant">0%</div>
+            <div class="heatmap-lbl">Solar -> Plant</div>
           </div>
-          <div class="heatmap-cell yellow">
-            <div class="heatmap-val">68%</div>
-            <div class="heatmap-lbl">Line B</div>
+          <div class="heatmap-cell yellow" id="cellPlantLDU">
+            <div class="heatmap-val" id="linePlantLDU">0%</div>
+            <div class="heatmap-lbl">Plant -> LDU</div>
           </div>
-          <div class="heatmap-cell red">
-            <div class="heatmap-val">94%</div>
-            <div class="heatmap-lbl">Line C</div>
+          <div class="heatmap-cell red" id="cellEVLDU">
+            <div class="heatmap-val" id="lineEVLDU">0%</div>
+            <div class="heatmap-lbl">EV -> LDU</div>
           </div>
-          <div class="heatmap-cell green">
-            <div class="heatmap-val">51%</div>
-            <div class="heatmap-lbl">Line D</div>
-          </div>
-          <div class="heatmap-cell yellow">
-            <div class="heatmap-val">71%</div>
-            <div class="heatmap-lbl">Line E</div>
-          </div>
-          <div class="heatmap-cell green">
-            <div class="heatmap-val">38%</div>
-            <div class="heatmap-lbl">Line F</div>
+          <div class="heatmap-cell green" id="cellLDULoad">
+            <div class="heatmap-val" id="lineLDULoad">0%</div>
+            <div class="heatmap-lbl">LDU -> Load</div>
           </div>
         </div>
         <div style="margin-top:6px;font-size:8px;color:var(--dim);text-align:center">SCADA Network Status</div>
@@ -693,21 +683,7 @@ function updateDispatch(d) {
 function updateRisk(supply, demand) {
   const stress = Math.max(0, (demand - supply) / demand * 100);
   const blackout = Math.max(0, demand - supply) / demand * 100;
-  
-  // Update old risk display (compatibility)
-  const stEl = document.getElementById('gridStress');
-  if (stEl) {
-    stEl.textContent = stress.toFixed(0) + '%';
-    stEl.className = 'gauge-val ' + (stress < 20 ? 'green' : stress < 50 ? 'yellow' : 'red');
-  }
-  
-  const boEl = document.getElementById('blackoutRisk');
-  if (boEl) {
-    boEl.textContent = blackout.toFixed(0) + '%';
-    boEl.className = 'gauge-val ' + (blackout < 5 ? 'green' : blackout < 20 ? 'yellow' : 'red');
-  }
-  
-  // Update new risk display
+
   const stEl2 = document.getElementById('gridStress2');
   if (stEl2) {
     stEl2.textContent = stress.toFixed(0) + '%';
@@ -757,23 +733,41 @@ function updateGridHealth(renew, peak, demand) {
   });
 }
 
-function updatePowerMix(renew, peak, ev, reserve) {
-  const total = renew + peak + Math.max(0, ev) + reserve;
+function updatePowerMix(renew, peak, ev) {
+  const evDispatch = Math.max(0, ev);
+  const total = renew + peak + evDispatch;
   if (total === 0) return;
-  
-  const solarPct = (renew / total * 100).toFixed(0);
-  const plantPct = (peak / total * 100).toFixed(0);
-  const storagePct = (Math.max(0, ev) / total * 100).toFixed(0);
-  const reservePct = (reserve / total * 100).toFixed(0);
+
+  const solarPct = (renew / total * 100);
+  const plantPct = (peak / total * 100);
+  const evPct = (evDispatch / total * 100);
+
+  const CIRC = 2 * Math.PI * 30;
+  const segments = [
+    { id: 'mixSolar', pct: solarPct },
+    { id: 'mixPlant', pct: plantPct },
+    { id: 'mixEV', pct: evPct },
+  ];
+  let offset = 0;
+  segments.forEach(seg => {
+    const el = document.getElementById(seg.id);
+    if (!el) return;
+    const len = (Math.max(0, seg.pct) / 100) * CIRC;
+    el.style.strokeDasharray = `${len} ${Math.max(0, CIRC - len)}`;
+    el.style.strokeDashoffset = `${-offset}`;
+    offset += len;
+  });
+
+  const totalEl = document.getElementById('mixTotal');
+  if (totalEl) totalEl.textContent = `${Math.round(total)} MW`;
   
   // Update legend
   const legend = document.querySelector('.donut-legend');
   if (legend) {
     legend.innerHTML = `
-      <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar ${solarPct}%</span></div>
-      <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Power Plant ${plantPct}%</span></div>
-      <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>Storage ${storagePct}%</span></div>
-      <div class="donut-item"><div class="donut-swatch" style="background:var(--blue)"></div><span>Reserve ${reservePct}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar ${solarPct.toFixed(0)}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Power Plant ${plantPct.toFixed(0)}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>EV Discharge ${evPct.toFixed(0)}%</span></div>
     `;
   }
 }
@@ -788,19 +782,29 @@ function updateForecast(demand, forecast) {
   }
 }
 
-function updateCongestion(supply) {
-  // Mock congestion levels based on supply
-  const stressRatio = Math.min(1, supply / 200);
-  const congestion = [42, 68, 94, 51, 71, 38].map(v => 
-    Math.min(100, Math.max(0, v + (1 - stressRatio) * 20 + Math.random() * 10))
-  );
-  
-  document.querySelectorAll('.heatmap-cell').forEach((cell, i) => {
-    const val = congestion[i];
-    const color = val > 80 ? 'red' : val > 60 ? 'yellow' : 'green';
-    cell.className = 'heatmap-cell ' + color;
-    cell.querySelector('.heatmap-val').textContent = Math.round(val) + '%';
-  });
+function setLineLoad(cellId, valId, pct) {
+  const cell = document.getElementById(cellId);
+  const val = document.getElementById(valId);
+  if (!cell || !val) return;
+  const pctSafe = Math.max(0, Math.min(100, pct));
+  const color = pctSafe > 80 ? 'red' : pctSafe > 60 ? 'yellow' : 'green';
+  cell.className = 'heatmap-cell ' + color;
+  val.textContent = Math.round(pctSafe) + '%';
+}
+
+function updateCongestion(renew, peak, ev, delivered, demand, peakerCap) {
+  const demandBase = Math.max(1, demand);
+  const plantCapBase = Math.max(1, peakerCap);
+
+  const solarToPlant = (renew / demandBase) * 100;
+  const plantToLdu = (peak / plantCapBase) * 100;
+  const evToLdu = (Math.max(0, ev) / demandBase) * 100;
+  const lduToLoad = (delivered / demandBase) * 100;
+
+  setLineLoad('cellSolarPlant', 'lineSolarPlant', solarToPlant);
+  setLineLoad('cellPlantLDU', 'linePlantLDU', plantToLdu);
+  setLineLoad('cellEVLDU', 'lineEVLDU', evToLdu);
+  setLineLoad('cellLDULoad', 'lineLDULoad', lduToLoad);
 }
 
 function updateResilienceScores(demand, supply, renewableUtil, cost) {
@@ -852,16 +856,6 @@ function addTimelineEvent(time, event, priority) {
   // Keep only last 15 events
   timeline.insertBefore(item, timeline.firstChild);
   while (timeline.children.length > 15) timeline.lastChild.remove();
-}
-
-function updateScore(r) {
-  document.getElementById('scoreBreakdown').innerHTML = `
-    <div class="score-row"><span>Reliability</span><span class="score-pos">+${r.demand_satisfaction_score.toFixed(2)}</span></div>
-    <div class="score-row"><span>Economic</span><span class="score-pos">+${r.cost_efficiency_score.toFixed(2)}</span></div>
-    <div class="score-row"><span>Green</span><span class="score-pos">+${r.renewable_utilization_score.toFixed(2)}</span></div>
-    <div class="score-row"><span>Penalties</span><span class="score-neg">-${(r.infeasibility_penalty + r.blackout_penalty).toFixed(2)}</span></div>
-    <div class="score-row score-total"><span>TOTAL</span><span>${r.score.toFixed(2)}</span></div>
-  `;
 }
 
 function drawChart() {
@@ -1035,9 +1029,18 @@ async function step() {
   
   // NEW MODULE UPDATES
   updateGridHealth(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, d);
-  updatePowerMix(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh, p - disp.peaker_dispatch_mwh);
+  const reserveHeadroom = Math.max(0, p - disp.peaker_dispatch_mwh);
+  updatePowerMix(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh);
+  document.getElementById('reserveHeadroom').textContent = reserveHeadroom.toFixed(0) + ' MW';
   updateForecast(d, d + (Math.random() - 0.5) * 20);
-  updateCongestion(disp.delivered_supply_mwh);
+  updateCongestion(
+    disp.renewable_dispatch_mwh,
+    disp.peaker_dispatch_mwh,
+    disp.ev_discharge_mwh,
+    disp.delivered_supply_mwh,
+    d,
+    p
+  );
   updateResilienceScores(d, disp.delivered_supply_mwh, rew.renewable_utilization_score * 10, rew.cost_efficiency_score);
   updatePolicyConfidence(scarcity);
   updateInterventions(obs.step);
