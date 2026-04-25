@@ -39,21 +39,28 @@ def heuristic_joint_action(obs: MarketObservation, personality: str = "balanced"
     renewable_offer = min(obs.renewable_availability_mwh, demand * 0.55)
     peaker_offer = min(obs.peaker_capacity_mwh, max(0.0, demand - renewable_offer))
 
+    # EV SOC limits: 20%-80%
+    min_soc = obs.ev_storage_capacity_mwh * 0.2
+    max_soc = obs.ev_storage_capacity_mwh * 0.8
+    
+    chargeable = max(0, max_soc - obs.ev_storage_mwh)
+    dischargeable = max(0, obs.ev_storage_mwh - min_soc)
+    
     if personality == "greedy":
         industrial_price = 95.0
         peaker_price = max(62.0, obs.leader_price_signal * 1.08)
-        charge = 1.0
-        discharge = 5.0 if obs.scarcity_index > 0.2 else 2.0
+        charge = min(chargeable, 1.0)
+        discharge = min(dischargeable, 5.0 if obs.scarcity_index > 0.2 else 2.0)
     elif personality == "risk_averse":
         industrial_price = 90.0
         peaker_price = max(54.0, obs.leader_price_signal * 0.98)
-        charge = 5.0 if obs.renewable_availability_mwh > demand else 1.0
-        discharge = 2.0 if obs.scarcity_index > 0.35 else 0.0
+        charge = min(chargeable, 5.0 if obs.renewable_availability_mwh > demand else 1.0)
+        discharge = min(dischargeable, 2.0 if obs.scarcity_index > 0.35 else 0.0)
     else:
         industrial_price = 85.0
         peaker_price = max(58.0, obs.leader_price_signal * 1.02)
-        charge = 3.0 if obs.renewable_availability_mwh > demand else 0.0
-        discharge = 4.0 if obs.renewable_availability_mwh < 0.8 * demand else 0.0
+        charge = min(chargeable, 3.0 if obs.renewable_availability_mwh > demand else 0.0)
+        discharge = min(dischargeable, 4.0 if obs.renewable_availability_mwh < 0.8 * demand else 0.0)
 
     bids = [
         AgentBid(
@@ -127,11 +134,42 @@ def adaptive_stackelberg_action(obs: MarketObservation, personality: str = "bala
         ),
     ]
 
-    if scarcity > 0.25:
-        discharge = min(obs.ev_storage_mwh, 3.0 + 8.0 * scarcity)
-        charge = 0.0
+    # EV SOC limits: 20%-80%
+    min_soc = obs.ev_storage_capacity_mwh * 0.2
+    max_soc = obs.ev_storage_capacity_mwh * 0.8
+    
+    # Current SOC %
+    current_soc_pct = obs.ev_storage_mwh / obs.ev_storage_capacity_mwh
+    
+    # Available headroom
+    current_chargeable = max(0, max_soc - obs.ev_storage_mwh)
+    current_dischargeable = max(0, obs.ev_storage_mwh - min_soc)
+
+    # EV strategy: Simple and effective
+    # Prioritize keeping battery charged
+    
+    if current_soc_pct <= 0.35:
+        # LOW - must charge aggressively
+        charge = min(current_chargeable, 5.0)
+        discharge = 0.0
+    elif current_soc_pct <= 0.5:
+        # Mid-low - charge when possible, unless very high scarcity
+        if scarcity > 0.4:
+            discharge = min(current_dischargeable, 2.0 + 4.0 * scarcity)
+            charge = 0.0
+        else:
+            charge = min(current_chargeable, 3.0)
+            discharge = 0.0
+    elif current_soc_pct >= 0.6:
+        # Good charge - use when needed for grid stability
+        if scarcity > 0.2:
+            discharge = min(current_dischargeable, 4.0 + 5.0 * scarcity)
+            charge = 0.0
+        else:
+            charge = 0.0
+            discharge = 0.0
     else:
-        charge = min(obs.ev_storage_capacity_mwh - obs.ev_storage_mwh, 2.0 * charge_bias)
+        charge = 0.0
         discharge = 0.0
 
-    return JointAction(bids=bids, ev_charge_mwh=max(0.0, charge), ev_discharge_mwh=max(0.0, discharge))
+    return JointAction(bids=bids, ev_charge_mwh=max(0, charge), ev_discharge_mwh=max(0, discharge))

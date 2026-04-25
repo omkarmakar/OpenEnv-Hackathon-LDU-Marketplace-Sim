@@ -1,6 +1,11 @@
 from typing import Dict, Tuple
 
 
+# EV battery SOC limits to prevent battery depletion
+EV_SOC_MIN = 0.2  # 20% minimum
+EV_SOC_MAX = 0.8  # 80% maximum
+
+
 def enforce_dispatch(
     market_result: Dict,
     demand_mwh: float,
@@ -17,15 +22,19 @@ def enforce_dispatch(
         ev_discharge_mwh = 0.0
         corrections.append("Simultaneous EV charge and discharge corrected by LDU")
 
-    max_charge = max(0.0, ev_storage_capacity_mwh - ev_storage_mwh)
-    max_discharge = max(0.0, ev_storage_mwh)
+    # SOC limits: maintain 20%-80% range
+    min_storage = ev_storage_capacity_mwh * EV_SOC_MIN
+    max_storage = ev_storage_capacity_mwh * EV_SOC_MAX
+
+    max_charge = max(0.0, max_storage - ev_storage_mwh)
+    max_discharge = max(0.0, ev_storage_mwh - min_storage)
 
     if ev_charge_mwh > max_charge:
-        corrections.append("EV charge exceeded storage headroom")
+        corrections.append("EV charge exceeded SOC 80% limit")
         ev_charge_mwh = max_charge
 
     if ev_discharge_mwh > max_discharge:
-        corrections.append("EV discharge exceeded storage state-of-charge")
+        corrections.append("EV discharge below SOC 20% limit")
         ev_discharge_mwh = max_discharge
 
     dispatch_from_market = market_result.get("cleared_mwh", 0.0)
