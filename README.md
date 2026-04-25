@@ -24,13 +24,15 @@ Core loop:
   - ramp-rate constraints for peaker and EV discharge
   - peaker startup cost accounting
   - emissions and carbon-cost accounting
-  - frequency and line-loading proxies
+  - frequency and line-loading consequence coupling
+  - reserve commitment gate and emergency dispatch trigger path
+  - peaker activation delay semantics (task-configurable)
 - **Uncertainty and resilience:**
   - stochastic demand/renewable evolution
   - forecast-vs-realized channels
   - contingency events (`peaker_trip`, `transmission_derate`)
 - **Reward design:** reliability-first hierarchical scoring
-- **Evaluation:** policy x task x seed comparison artifacts for cost/blackouts/violations/emissions
+- **Evaluation:** policy x scenario x seed comparison artifacts for cost/blackouts/violations/emissions/reserve shortfall/stability events
 - **Demo:** operator override and resilience scenario endpoint
 
 ## Scenarios
@@ -38,8 +40,17 @@ Core loop:
 - `default`
 - `long_horizon`
 - `stress_shock`
+- `normal`
+- `outage`
+- `renewable_collapse`
 
 Each scenario contains task-specific reserve/ramp/startup/carbon/forecast/contingency settings.
+
+Benchmark protocol labels used in reports:
+- `normal` -> task `normal`
+- `shock` -> task `stress_shock`
+- `outage` -> task `outage`
+- `renewable_collapse` -> task `renewable_collapse`
 
 ## API Endpoints
 
@@ -57,6 +68,12 @@ Each scenario contains task-specific reserve/ramp/startup/carbon/forecast/contin
 - `POST /run-demo-mode`
 - `POST /run-resilience-demo`
 - `GET /demo`
+
+`/run-resilience-demo` now reports trajectory-level resilience deltas:
+- `blackout_step_delta`
+- `reserve_activation_delta`
+- `emergency_dispatch_delta`
+- `stability_event_delta`
 
 ## Quickstart
 
@@ -79,8 +96,9 @@ python -m smartgrid_mas.train_baseline --episodes 12 --seeds 3 --outdir artifact
 
 Generated outputs:
 - `artifacts/baseline_metrics.csv` (detailed rows)
-- `artifacts/policy_comparison.csv` (aggregated metrics)
+- `artifacts/policy_comparison.csv` (aggregated metrics with mean/std)
 - `artifacts/policy_comparison.md` (judge-readable table)
+- `artifacts/resilience_stress_benchmark.md` (protocol + findings)
 - `artifacts/reward_comparison.png` (reward curves)
 
 ## Tests
@@ -92,6 +110,7 @@ pytest -q
 Coverage includes:
 - market + dispatch invariants
 - reward bounds and consistency
+- unsafe trajectory scoring lower than stable trajectory
 - deterministic seeded regression
 
 ## Notes

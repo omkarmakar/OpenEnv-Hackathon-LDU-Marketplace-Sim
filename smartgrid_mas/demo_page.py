@@ -395,7 +395,7 @@ def build_demo_html() -> str:
           </div>
         </div>
         <div style="flex:1;margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
-          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Load Forecast (Synthetic)</div>
+          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Load Forecast (Backend)</div>
           <div class="forecast-stat"><span>Forecast</span><span style="color:var(--cyan)">185 MW</span></div>
           <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
           <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
@@ -753,9 +753,9 @@ function updateDispatch(d) {
   }
 }
 
-function updateRisk(supply, demand) {
-  const stress = Math.max(0, (demand - supply) / demand * 100);
-  const blackout = Math.max(0, demand - supply) / demand * 100;
+function updateRisk(supply, demand, stabilityRiskIndex) {
+  const stress = Math.max(0, Math.max(stabilityRiskIndex * 100, (demand - supply) / Math.max(1, demand) * 100));
+  const blackout = Math.max(0, demand - supply) / Math.max(1, demand) * 100;
 
   const stEl2 = document.getElementById('gridStress2');
   if (stEl2) {
@@ -851,11 +851,14 @@ function updatePowerMix(renew, peak, ev) {
   }
 }
 
-function updateForecast(demand, forecast) {
-  const error = Math.abs(demand - forecast) / forecast * 100;
+function updateForecast(demand, forecast, forecastErrorMw) {
+  const denom = Math.max(1e-6, forecast);
+  const error = Math.abs(forecastErrorMw) > 1e-6
+    ? Math.abs(forecastErrorMw) / denom * 100
+    : Math.abs(demand - forecast) / denom * 100;
   const forecastEls = document.querySelectorAll('.forecast-stat');
   if (forecastEls.length >= 3) {
-    forecastEls[0].innerHTML = `<span>Forecast (Synthetic)</span><span style="color:var(--cyan)">${Math.round(forecast)} MW</span>`;
+    forecastEls[0].innerHTML = `<span>Forecast</span><span style="color:var(--cyan)">${Math.round(forecast)} MW</span>`;
     forecastEls[1].innerHTML = `<span>Actual</span><span style="color:var(--green)">${Math.round(demand)} MW</span>`;
     forecastEls[2].innerHTML = `<span>Error</span><span style="color:${error > 5 ? 'var(--red)' : 'var(--yellow)'}">${error > 5 ? '+' : ''}${error.toFixed(1)}%</span>`;
   }
@@ -1127,7 +1130,7 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   historyData.push({demand: d, renewable: r, supply: disp.delivered_supply_mwh});
   drawChart();
   
-  updateRisk(disp.delivered_supply_mwh, d);
+  updateRisk(disp.delivered_supply_mwh, d, disp.stability_risk_index || 0);
   
   const rew = res.reward;
   document.getElementById('policyName').textContent = pol.toUpperCase() + ' POLICY';
@@ -1147,7 +1150,7 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   const reserveHeadroom = Math.max(0, p - disp.peaker_dispatch_mwh);
   updatePowerMix(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh);
   document.getElementById('reserveHeadroom').textContent = reserveHeadroom.toFixed(0) + ' MW';
-  updateForecast(d, d + (Math.random() - 0.5) * 20);
+  updateForecast(d, obs.forecast_demand_mwh || d, obs.load_forecast_error_mwh || 0);
   updateCongestion(
     disp.renewable_dispatch_mwh,
     disp.peaker_dispatch_mwh,
@@ -1159,6 +1162,8 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   updateResilienceScores(rew);
   updatePolicyConfidence(rew, disp, scarcity);
   updateInterventions(disp);
+  if (disp.emergency_dispatch_triggered) addTimelineEvent(obs.step, 'Emergency dispatch triggered', 'critical');
+  if (disp.reserve_commitment_active) addTimelineEvent(obs.step, 'Reserve commitment activated', 'warning');
   
   // Add timeline events
   if (scarcity > 0.4) addTimelineEvent(obs.step, 'High demand period detected', 'warning');
@@ -1166,10 +1171,16 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   if (obs.shock_active) addTimelineEvent(obs.step, 'Renewable drop shock detected', 'critical');
   if (obs.step % 5 === 0) addTimelineEvent(obs.step, 'Policy update executed', 'info');
   
-  if (obs.shock_active) {
-    log('⚡ SHOCK!', 'shock');
+  if (obs.shock_active || disp.emergency_dispatch_triggered || disp.reserve_commitment_active) {
+    log('⚡ Operational stress event', 'shock');
     const threatList = document.getElementById('threatList');
-    if (threatList) threatList.innerHTML = '<div class="threat">⚡ Renewable drop detected!</div>';
+    if (threatList) {
+      const alerts = [];
+      if (obs.shock_active) alerts.push('⚡ Renewable drop detected');
+      if (disp.reserve_commitment_active) alerts.push('🛡️ Reserve commitment active');
+      if (disp.emergency_dispatch_triggered) alerts.push('🚨 Emergency dispatch triggered');
+      threatList.innerHTML = alerts.map(a => `<div class="threat">${a}</div>`).join('');
+    }
   }
 }
 

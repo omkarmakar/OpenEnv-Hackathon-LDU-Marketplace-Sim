@@ -15,6 +15,7 @@ def enforce_dispatch(
     ev_charge_mwh: float,
     ev_discharge_mwh: float,
     reserve_margin_ratio: float = 0.1,
+    reserve_commitment_threshold_ratio: float = 1.0,
     peaker_ramp_limit_mwh: float = 1e9,
     ev_ramp_limit_mwh: float = 1e9,
     previous_peaker_dispatch_mwh: float = 0.0,
@@ -89,24 +90,59 @@ def enforce_dispatch(
     unmet_demand = max(0.0, demand_mwh - delivered_supply)
     oversupply = max(0.0, delivered_supply - demand_mwh)
 
-    next_ev_storage = ev_storage_mwh + total_ev_charge - ev_discharge_mwh - storage_loss
-    next_ev_storage = max(0.0, min(ev_storage_capacity_mwh, next_ev_storage))
-    curtailed_renewable = max(0.0, renewable_surplus - total_ev_charge)
-
     reserve_requirement = max(0.0, demand_mwh * max(0.0, reserve_margin_ratio))
     spinning_reserve = max(0.0, peaker_capacity_mwh - peaker_dispatch) + max(0.0, max_discharge - ev_discharge_mwh)
     reserve_shortfall = max(0.0, reserve_requirement - spinning_reserve)
+    reserve_commitment_active = spinning_reserve < reserve_requirement * max(1.0, reserve_commitment_threshold_ratio)
+    reserve_commitment_penalty = max(
+        0.0, (reserve_requirement * max(1.0, reserve_commitment_threshold_ratio)) - spinning_reserve
+    )
     if reserve_shortfall > 0.0:
         corrections.append("Reserve margin shortfall")
+    if reserve_commitment_active:
+        corrections.append("Reserve commitment gate activated")
 
-    peaker_online = peaker_dispatch > 0.0
-    startup_cost = peaker_startup_cost_usd if (peaker_online and not previous_peaker_online) else 0.0
-    emissions_tco2 = peaker_dispatch * max(0.0, peaker_emission_factor_tco2_per_mwh)
-    emissions_cost_usd = emissions_tco2 * max(0.0, carbon_price_usd_per_tco2)
     reserve_ratio = reserve_shortfall / max(reserve_requirement, 1.0)
     frequency_hz = max(49.0, min(50.2, 50.0 - 0.7 * (unmet_demand / max(demand_mwh, 1e-6)) - 0.25 * reserve_ratio))
     line_loading_ratio = _safe_ratio(
         gross_supply, max(1.0, peaker_capacity_mwh + renewable_available_mwh + max_discharge)
+    )
+    emergency_dispatch_triggered = frequency_hz < 49.75 or line_loading_ratio > 1.02 or reserve_commitment_active
+    emergency_support_mwh = 0.0
+    if emergency_dispatch_triggered and unmet_demand > 0.0:
+        peaker_headroom = max(0.0, peaker_capacity_mwh - peaker_dispatch)
+        ev_headroom = max(0.0, max_discharge - ev_discharge_mwh)
+        emergency_support_mwh = min(unmet_demand, peaker_headroom + ev_headroom)
+        extra_peaker = min(peaker_headroom, emergency_support_mwh)
+        extra_ev = min(ev_headroom, emergency_support_mwh - extra_peaker)
+        peaker_dispatch += extra_peaker
+        ev_discharge_mwh += extra_ev
+        gross_supply = renewable_dispatch + peaker_dispatch + ev_discharge_mwh
+        transmission_loss = 0.03 * gross_supply * max(0.5, transmission_loss_multiplier)
+        delivered_supply = max(0.0, gross_supply - transmission_loss)
+        unmet_demand = max(0.0, demand_mwh - delivered_supply)
+        oversupply = max(0.0, delivered_supply - demand_mwh)
+        spinning_reserve = max(0.0, peaker_capacity_mwh - peaker_dispatch) + max(0.0, max_discharge - ev_discharge_mwh)
+        reserve_shortfall = max(0.0, reserve_requirement - spinning_reserve)
+        reserve_ratio = reserve_shortfall / max(reserve_requirement, 1.0)
+        frequency_hz = max(49.0, min(50.2, 50.0 - 0.7 * (unmet_demand / max(demand_mwh, 1e-6)) - 0.25 * reserve_ratio))
+        line_loading_ratio = _safe_ratio(
+            gross_supply, max(1.0, peaker_capacity_mwh + renewable_available_mwh + max_discharge)
+        )
+        corrections.append("Emergency dispatch support activated")
+
+    next_ev_storage = ev_storage_mwh + total_ev_charge - ev_discharge_mwh - storage_loss
+    next_ev_storage = max(0.0, min(ev_storage_capacity_mwh, next_ev_storage))
+    curtailed_renewable = max(0.0, renewable_surplus - total_ev_charge)
+    peaker_online = peaker_dispatch > 0.0
+    startup_cost = peaker_startup_cost_usd if (peaker_online and not previous_peaker_online) else 0.0
+    emissions_tco2 = peaker_dispatch * max(0.0, peaker_emission_factor_tco2_per_mwh)
+    emissions_cost_usd = emissions_tco2 * max(0.0, carbon_price_usd_per_tco2)
+    stability_risk_index = _clamp01(
+        0.35 * (unmet_demand / max(demand_mwh, 1.0))
+        + 0.25 * (reserve_shortfall / max(reserve_requirement, 1.0))
+        + 0.20 * max(0.0, 49.95 - frequency_hz)
+        + 0.20 * max(0.0, line_loading_ratio - 0.9)
     )
 
     dispatch = {
@@ -124,6 +160,8 @@ def enforce_dispatch(
         "reserve_requirement_mwh": round(reserve_requirement, 3),
         "spinning_reserve_mwh": round(spinning_reserve, 3),
         "reserve_shortfall_mwh": round(reserve_shortfall, 3),
+        "reserve_commitment_active": reserve_commitment_active,
+        "reserve_commitment_penalty_mwh": round(reserve_commitment_penalty, 3),
         "ramp_limit_mwh": round(peaker_ramp, 3),
         "ramp_violation_mwh": round(ramp_violation, 3),
         "startup_cost_usd": round(startup_cost, 3),
@@ -131,6 +169,9 @@ def enforce_dispatch(
         "emissions_cost_usd": round(emissions_cost_usd, 3),
         "frequency_hz": round(frequency_hz, 4),
         "line_loading_ratio": round(line_loading_ratio, 4),
+        "emergency_dispatch_triggered": emergency_dispatch_triggered,
+        "emergency_support_mwh": round(emergency_support_mwh, 3),
+        "stability_risk_index": round(stability_risk_index, 4),
         "peaker_online": peaker_online,
         "delivered_supply_mwh": round(delivered_supply, 3),
         "unmet_demand_mwh": round(unmet_demand, 3),
@@ -146,3 +187,7 @@ def _safe_ratio(numerator: float, denominator: float) -> float:
     if denominator <= 0:
         return 0.0
     return max(0.0, min(1.5, numerator / denominator))
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))

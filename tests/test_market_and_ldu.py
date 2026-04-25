@@ -32,6 +32,7 @@ def test_ldu_correction_invariants():
         ev_charge_mwh=8,
         ev_discharge_mwh=10,
         reserve_margin_ratio=0.2,
+        reserve_commitment_threshold_ratio=1.05,
         peaker_ramp_limit_mwh=5.0,
         ev_ramp_limit_mwh=2.0,
         previous_peaker_dispatch_mwh=0.0,
@@ -51,3 +52,4 @@ def test_ldu_correction_invariants():
     assert dispatch["spinning_reserve_mwh"] >= 0
     assert dispatch["emissions_tco2"] >= 0
     assert dispatch["frequency_hz"] <= 50.2
+    assert dispatch["stability_risk_index"] >= 0

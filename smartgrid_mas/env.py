@@ -65,6 +65,10 @@ class Session:
     contingency_loss_multiplier: float = 1.0
     total_emissions_tco2: float = 0.0
     blackout_steps: int = 0
+    reserve_commitment_events: int = 0
+    emergency_dispatch_events: int = 0
+    stability_events: int = 0
+    peaker_activation_timer: int = 0
     personalities: Dict[str, str] = field(default_factory=dict)
 
     def to_observation(self, hint: Optional[str] = None, error_message: Optional[str] = None) -> MarketObservation:
@@ -166,16 +170,37 @@ class SmartGridMarketEnv:
         if session.operator_override_enabled:
             applied_action = heuristic_joint_action(session.to_observation(), personality="risk_averse")
         market = clear_market(applied_action.bids, leader_price_signal=session.base_price)
+        effective_peaker_capacity = session.peaker_capacity_mwh * session.contingency_peaker_multiplier
+        expected_residual = max(0.0, market.get("cleared_mwh", 0.0) - session.renewable_mwh)
+        if (
+            session.task.peaker_activation_delay_steps > 0
+            and not session.peaker_online
+            and session.peaker_activation_timer == 0
+            and expected_residual > 0.0
+        ):
+            session.peaker_activation_timer = session.task.peaker_activation_delay_steps
+            session.event_log.append(
+                {
+                    "step": session.step,
+                    "type": "peaker_startup_delay",
+                    "delay_steps": session.task.peaker_activation_delay_steps,
+                }
+            )
+        if session.peaker_activation_timer > 0:
+            effective_peaker_capacity = 0.0
+            session.peaker_activation_timer -= 1
+
         dispatch, next_storage = enforce_dispatch(
             market_result=market,
             demand_mwh=session.demand_mwh,
             renewable_available_mwh=session.renewable_mwh,
-            peaker_capacity_mwh=session.peaker_capacity_mwh * session.contingency_peaker_multiplier,
+            peaker_capacity_mwh=effective_peaker_capacity,
             ev_storage_mwh=session.ev_storage_mwh,
             ev_storage_capacity_mwh=session.ev_storage_capacity_mwh,
             ev_charge_mwh=applied_action.ev_charge_mwh,
             ev_discharge_mwh=applied_action.ev_discharge_mwh,
             reserve_margin_ratio=session.task.reserve_margin_ratio,
+            reserve_commitment_threshold_ratio=session.task.reserve_commitment_threshold_ratio,
             peaker_ramp_limit_mwh=session.task.peaker_ramp_limit_mwh,
             ev_ramp_limit_mwh=session.task.ev_ramp_limit_mwh,
             previous_peaker_dispatch_mwh=session.previous_peaker_dispatch_mwh,
@@ -211,6 +236,12 @@ class SmartGridMarketEnv:
         session.total_emissions_tco2 += dispatch.get("emissions_tco2", 0.0)
         if dispatch["unmet_demand_mwh"] > 0.0:
             session.blackout_steps += 1
+        if dispatch.get("reserve_commitment_active", False):
+            session.reserve_commitment_events += 1
+        if dispatch.get("emergency_dispatch_triggered", False):
+            session.emergency_dispatch_events += 1
+        if dispatch.get("stability_risk_index", 0.0) >= 0.45:
+            session.stability_events += 1
         session.reward_history.append(reward.score)
 
         private_views = self._build_private_agent_views(session, market, dispatch)
@@ -262,6 +293,9 @@ class SmartGridMarketEnv:
                 "blackout_steps": session.blackout_steps,
                 "infeasible_actions": session.infeasible_actions,
                 "ldu_corrections": session.correction_count,
+                "reserve_commitment_events": session.reserve_commitment_events,
+                "emergency_dispatch_events": session.emergency_dispatch_events,
+                "stability_events": session.stability_events,
                 "leader_adjusted_bids": market["leader_adjusted_bids"],
                 "personality_map": session.personalities,
                 "operator_override_enabled": session.operator_override_enabled,

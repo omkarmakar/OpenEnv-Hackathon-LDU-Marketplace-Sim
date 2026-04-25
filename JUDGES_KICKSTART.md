@@ -34,10 +34,13 @@ Architecture phrase set:
 - Step or play for a few timesteps
 - Point out backend reliability signals in outputs:
   - reserve requirement/shortfall
+  - reserve commitment gate activation
+  - emergency dispatch trigger + support path
   - ramp violations
+  - peaker activation delay behavior
   - startup cost
   - emissions and carbon-cost impact
-  - frequency proxy and line-loading proxy
+  - frequency proxy, line-loading proxy, and stability risk index
 
 3) **Trigger stress behavior**
 - Use shock injection (`/inject-shock`) or run through contingency step
@@ -49,14 +52,16 @@ Architecture phrase set:
 
 5) **Show resilience story**
 - Call `/run-resilience-demo`
-- Highlight `catastrophic_failure_prevented` and blackout-step comparison.
+- Highlight `catastrophic_failure_prevented`, blackout-step comparison, and `trajectory_comparison` deltas (`reserve_activation_delta`, `emergency_dispatch_delta`, `stability_event_delta`).
 
 6) **Show benchmark evidence**
 - Present:
   - `artifacts/policy_comparison.csv`
   - `artifacts/policy_comparison.md`
+  - `artifacts/resilience_stress_benchmark.md`
   - `artifacts/reward_comparison.png`
-- Mention metrics: cost, blackout rate, constraint violations, emissions, reward.
+- Mention metrics: cost, blackout rate, constraint violations, emissions, reward, reserve shortfall rate, stability event rate.
+  - Mention benchmark scenarios: `normal`, `shock`, `outage`, `renewable_collapse` (`shock` maps to task `stress_shock`).
 
 ## API Calls You Can Run Live
 
@@ -92,7 +97,7 @@ curl -X POST http://localhost:7860/run-resilience-demo -H "Content-Type: applica
   No. Reliability, contingency, uncertainty, startup, reserve, and emissions are computed in backend engine paths.
 
 - **Where is the evidence?**  
-  In exported cross-policy artifacts (`policy_comparison.csv`/`.md`) across tasks and seeds.
+  In exported cross-policy artifacts (`policy_comparison.csv`/`.md`) and the formal `resilience_stress_benchmark.md` protocol report.
 
 ## What To Avoid Saying
 

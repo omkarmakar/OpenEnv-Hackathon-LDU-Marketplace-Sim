@@ -117,6 +117,12 @@ def _run_policy_episode(task_id: str, seed: int, policy: str, personality: str =
     rewards = []
     blackout_steps = 0
     unmet_energy = 0.0
+    reserve_events = 0
+    emergency_events = 0
+    startup_events = 0
+    stability_events = 0
+    min_frequency_hz = 50.0
+    peak_stability_risk = 0.0
     while True:
         if policy == "random":
             action = random_joint_action(obs, rng)
@@ -128,6 +134,12 @@ def _run_policy_episode(task_id: str, seed: int, policy: str, personality: str =
         rewards.append(result.reward.score)
         dispatch = result.info["dispatch"]
         unmet = dispatch.get("unmet_demand_mwh", 0.0)
+        min_frequency_hz = min(min_frequency_hz, float(dispatch.get("frequency_hz", 50.0)))
+        peak_stability_risk = max(peak_stability_risk, float(dispatch.get("stability_risk_index", 0.0)))
+        reserve_events += 1 if dispatch.get("reserve_commitment_active", False) else 0
+        emergency_events += 1 if dispatch.get("emergency_dispatch_triggered", False) else 0
+        startup_events += 1 if dispatch.get("startup_cost_usd", 0.0) > 0.0 else 0
+        stability_events += 1 if dispatch.get("stability_risk_index", 0.0) >= 0.45 else 0
         unmet_energy += unmet
         if unmet > 0.0:
             blackout_steps += 1
@@ -141,6 +153,12 @@ def _run_policy_episode(task_id: str, seed: int, policy: str, personality: str =
                 "blackout_steps": blackout_steps,
                 "unmet_energy_mwh": round(unmet_energy, 3),
                 "corrections": summary.get("ldu_corrections", 0),
+                "reserve_commitment_events": reserve_events,
+                "emergency_dispatch_events": emergency_events,
+                "startup_events": startup_events,
+                "stability_events": stability_events,
+                "min_frequency_hz": round(min_frequency_hz, 4),
+                "peak_stability_risk": round(peak_stability_risk, 4),
             }
 
 
@@ -288,8 +306,14 @@ def run_resilience_demo(request: ResilienceDemoRequest):
         "baseline": baseline,
         "candidate": candidate,
         "catastrophic_failure_prevented": prevented,
+        "trajectory_comparison": {
+            "blackout_step_delta": baseline["blackout_steps"] - candidate["blackout_steps"],
+            "reserve_activation_delta": baseline["reserve_commitment_events"] - candidate["reserve_commitment_events"],
+            "emergency_dispatch_delta": baseline["emergency_dispatch_events"] - candidate["emergency_dispatch_events"],
+            "stability_event_delta": baseline["stability_events"] - candidate["stability_events"],
+        },
         "narrative": (
-            "Candidate policy preserved service continuity under contingency and forecast uncertainty."
+            "Candidate policy preserved service continuity under contingency and forecast uncertainty, while improving reserve and stability outcomes."
             if prevented
             else "Candidate policy did not outperform baseline on blackout prevention for this seed."
         ),

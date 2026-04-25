@@ -14,9 +14,15 @@ def compute_reward(
     correction_count = dispatch["correction_count"]
     reserve_shortfall = max(0.0, dispatch.get("reserve_shortfall_mwh", 0.0))
     reserve_requirement = max(0.0, dispatch.get("reserve_requirement_mwh", demand_mwh * 0.1))
+    reserve_commitment_penalty = max(0.0, dispatch.get("reserve_commitment_penalty_mwh", 0.0))
+    reserve_commitment_active = bool(dispatch.get("reserve_commitment_active", False))
     ramp_violation = max(0.0, dispatch.get("ramp_violation_mwh", 0.0))
     startup_cost_usd = max(0.0, dispatch.get("startup_cost_usd", 0.0))
     emissions_tco2 = max(0.0, dispatch.get("emissions_tco2", 0.0))
+    frequency_hz = float(dispatch.get("frequency_hz", 50.0))
+    line_loading_ratio = max(0.0, float(dispatch.get("line_loading_ratio", 0.0)))
+    emergency_dispatch_triggered = bool(dispatch.get("emergency_dispatch_triggered", False))
+    stability_risk_index = max(0.0, float(dispatch.get("stability_risk_index", 0.0)))
 
     demand_safe = max(demand_mwh, 1e-6)
     current_gap = delivered - demand_mwh
@@ -55,16 +61,36 @@ def compute_reward(
     curtailed_renewable = max(0.0, dispatch.get("curtailed_renewable_mwh", 0.0))
     curtailment_ratio = _clamp(curtailed_renewable / demand_safe)
     reserve_shortfall_ratio = _clamp(reserve_shortfall / max(reserve_requirement, 1.0))
+    reserve_commitment_ratio = _clamp(reserve_commitment_penalty / max(reserve_requirement, 1.0))
     reserve_adequacy_score = _clamp(1.0 - reserve_shortfall_ratio)
     ramp_penalty = _clamp(ramp_violation / max(0.25 * demand_safe, 1.0))
     emissions_intensity = emissions_tco2 / max(delivered, 1e-6)
     emissions_penalty = _clamp(emissions_intensity / 0.65)
+    frequency_deviation_penalty = _clamp(abs(50.0 - frequency_hz) / 0.8)
+    overload_penalty = _clamp((line_loading_ratio - 0.95) / 0.35) if line_loading_ratio > 0.95 else 0.0
+    emergency_penalty = 0.12 if emergency_dispatch_triggered else 0.0
 
-    infeasibility_penalty = _clamp(correction_count * 0.05 + loss_ratio * 0.50 + reserve_shortfall_ratio * 0.25)
+    infeasibility_penalty = _clamp(
+        correction_count * 0.04
+        + loss_ratio * 0.38
+        + reserve_shortfall_ratio * 0.20
+        + reserve_commitment_ratio * 0.20
+        + overload_penalty * 0.10
+        + frequency_deviation_penalty * 0.08
+    )
     blackout_penalty = _clamp(shortfall_ratio ** 0.85)
     hard_reliability_penalty = _clamp(
-        0.52 * blackout_penalty + 0.22 * reserve_shortfall_ratio + 0.16 * infeasibility_penalty + 0.10 * ramp_penalty
+        0.43 * blackout_penalty
+        + 0.17 * reserve_shortfall_ratio
+        + 0.12 * reserve_commitment_ratio
+        + 0.10 * infeasibility_penalty
+        + 0.07 * ramp_penalty
+        + 0.06 * frequency_deviation_penalty
+        + 0.05 * overload_penalty
     )
+    if reserve_commitment_active:
+        hard_reliability_penalty = _clamp(hard_reliability_penalty + 0.08)
+    hard_reliability_penalty = _clamp(hard_reliability_penalty + emergency_penalty)
     reliability_stage = _clamp((1.0 - hard_reliability_penalty) * (0.85 + 0.15 * reserve_adequacy_score))
     service_stage = _clamp(
         0.55 * demand_satisfaction + 0.20 * stability_score + 0.15 * recovery_score + 0.10 * (1.0 - oversupply_ratio)
@@ -75,16 +101,17 @@ def compute_reward(
         + 0.16 * clean_flex_share
         + 0.10 * (1.0 - emissions_penalty)
     )
-    base_score = 0.55 * reliability_stage + 0.30 * service_stage + 0.15 * optimization_stage
+    stability_stage = _clamp(0.55 * (1.0 - frequency_deviation_penalty) + 0.45 * (1.0 - overload_penalty))
+    base_score = 0.50 * reliability_stage + 0.22 * service_stage + 0.18 * optimization_stage + 0.10 * stability_stage
     anti_hacking_penalty = _clamp(
-        0.45 * curtailment_ratio + 0.25 * peaker_dependence + 0.15 * oversupply_ratio + 0.15 * ramp_penalty
+        0.40 * curtailment_ratio + 0.22 * peaker_dependence + 0.12 * oversupply_ratio + 0.12 * ramp_penalty + 0.14 * stability_risk_index
     )
     score = _clamp(base_score * (1.0 - 0.55 * anti_hacking_penalty))
 
     reason = (
         f"delivered={delivered:.1f} demand={demand_mwh:.1f} unmet={unmet:.1f} "
         f"price={effective_unit_cost:.1f} gap={current_gap:.1f} reserve_shortfall={reserve_shortfall:.2f} "
-        f"emissions={emissions_tco2:.3f} corrections={correction_count}"
+        f"freq={frequency_hz:.3f} line={line_loading_ratio:.3f} emissions={emissions_tco2:.3f} corrections={correction_count}"
     )
 
     return MarketReward(
