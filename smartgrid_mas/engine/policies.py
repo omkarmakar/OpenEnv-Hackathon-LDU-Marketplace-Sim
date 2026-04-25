@@ -94,20 +94,21 @@ def adaptive_stackelberg_action(obs: MarketObservation, personality: str = "bala
     scarcity = max(0.0, obs.scarcity_index)
     leader = max(1.0, obs.leader_price_signal)
 
-    renewable_offer = min(obs.renewable_availability_mwh, demand * (0.52 + 0.18 * (1.0 - scarcity)))
-    peaker_offer = min(obs.peaker_capacity_mwh, max(0.0, demand - renewable_offer) * (1.0 + 0.25 * scarcity))
+    renewable_offer = min(obs.renewable_availability_mwh, demand * (0.58 + 0.20 * (1.0 - scarcity)))
+    peaker_need = max(0.0, demand - renewable_offer)
+    peaker_offer = min(obs.peaker_capacity_mwh, peaker_need * (1.0 + 0.18 * scarcity))
 
     if personality == "opportunistic":
         peaker_markup = 1.16
-        load_budget = 1.6
+        load_budget = 1.42 + 0.28 * scarcity
         charge_bias = 0.5
     elif personality == "risk_averse":
         peaker_markup = 1.03
-        load_budget = 1.35
+        load_budget = 1.30 + 0.18 * scarcity
         charge_bias = 1.25
     else:
-        peaker_markup = 1.1
-        load_budget = 1.45
+        peaker_markup = 1.08 + 0.08 * scarcity
+        load_budget = 1.34 + 0.22 * scarcity
         charge_bias = 1.0
 
     bids = [
@@ -116,21 +117,21 @@ def adaptive_stackelberg_action(obs: MarketObservation, personality: str = "bala
             role="renewable_prosumer",
             bid_type="supply",
             quantity_mwh=max(0.0, renewable_offer),
-            price_usd_per_mwh=max(15.0, leader * 0.82),
+            price_usd_per_mwh=max(12.0, leader * 0.78),
         ),
         AgentBid(
             agent_id="peaker_1",
             role="peaker_plant",
             bid_type="supply",
             quantity_mwh=max(0.0, peaker_offer),
-            price_usd_per_mwh=max(42.0, leader * peaker_markup),
+            price_usd_per_mwh=max(40.0, leader * peaker_markup),
         ),
         AgentBid(
             agent_id="industrial_1",
             role="industrial_load",
             bid_type="demand",
             quantity_mwh=demand,
-            price_usd_per_mwh=leader * load_budget,
+            price_usd_per_mwh=leader * min(1.75, load_budget),
         ),
     ]
 
@@ -145,31 +146,29 @@ def adaptive_stackelberg_action(obs: MarketObservation, personality: str = "bala
     current_chargeable = max(0, max_soc - obs.ev_storage_mwh)
     current_dischargeable = max(0, obs.ev_storage_mwh - min_soc)
 
-    # EV strategy: Simple and effective
-    # Prioritize keeping battery charged
-    
+    # EV strategy: hold mid SOC, charge from likely surplus, discharge in scarcity windows.
     if current_soc_pct <= 0.35:
-        # LOW - must charge aggressively
         charge = min(current_chargeable, 5.0)
         discharge = 0.0
-    elif current_soc_pct <= 0.5:
-        # Mid-low - charge when possible, unless very high scarcity
-        if scarcity > 0.4:
-            discharge = min(current_dischargeable, 2.0 + 4.0 * scarcity)
-            charge = 0.0
-        else:
-            charge = min(current_chargeable, 3.0)
-            discharge = 0.0
-    elif current_soc_pct >= 0.6:
-        # Good charge - use when needed for grid stability
-        if scarcity > 0.2:
-            discharge = min(current_dischargeable, 4.0 + 5.0 * scarcity)
-            charge = 0.0
-        else:
-            charge = 0.0
-            discharge = 0.0
+    elif scarcity > 0.45 and current_soc_pct > 0.25:
+        discharge = min(current_dischargeable, 2.5 + 5.5 * scarcity)
+        charge = 0.0
+    elif obs.renewable_availability_mwh > demand * 0.9 and current_soc_pct < 0.75:
+        charge = min(current_chargeable, 2.5 * charge_bias + 2.0)
+        discharge = 0.0
+    elif scarcity < 0.15 and current_soc_pct < 0.55:
+        charge = min(current_chargeable, 1.5 * charge_bias + 1.0)
+        discharge = 0.0
+    elif scarcity > 0.25 and current_soc_pct > 0.55:
+        discharge = min(current_dischargeable, 2.0 + 3.5 * scarcity)
+        charge = 0.0
     else:
         charge = 0.0
+        discharge = 0.0
+
+    if current_soc_pct >= 0.79:
+        charge = 0.0
+    if current_soc_pct <= 0.21:
         discharge = 0.0
 
     return JointAction(bids=bids, ev_charge_mwh=max(0, charge), ev_discharge_mwh=max(0, discharge))

@@ -273,8 +273,9 @@ def build_demo_html() -> str:
           <g transform="translate(30, 90)">
             <rect x="0" y="0" width="50" height="45" rx="4" class="node-ev"/>
             <text x="25" y="15" class="node-text">🔋 EV</text>
-            <text x="25" y="32" class="node-text" id="nodeEV" fill="#a855f7" font-size="14">0%</text>
-            <text x="25" y="60" class="node-label">BATTERY</text>
+            <text x="25" y="30" class="node-text" id="nodeEV" fill="#a855f7" font-size="12">SOC 0%</text>
+            <text x="25" y="40" class="node-label" id="nodeEVFlow">CH 0.0 | DIS 0.0</text>
+            <text x="25" y="60" class="node-label">SOC / MW</text>
           </g>
           
           <!-- LDU -->
@@ -391,6 +392,8 @@ def build_demo_html() -> str:
           <div class="forecast-stat"><span>Forecast</span><span style="color:var(--cyan)">185 MW</span></div>
           <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
           <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
+          <div class="forecast-stat"><span>EV SOC</span><span style="color:var(--purple)" id="evSocStat">0%</span></div>
+          <div class="forecast-stat"><span>EV CH / DIS</span><span style="color:var(--purple)" id="evCdStat">0.0 / 0.0 MW</span></div>
           <div class="forecast-stat"><span>Reserve Headroom</span><span style="color:var(--blue)" id="reserveHeadroom">0 MW</span></div>
         </div>
       </div>
@@ -538,15 +541,15 @@ def build_demo_html() -> str:
           <div class="savings-grid">
             <div class="saving-item">
               <div class="saving-icon">🛡️</div>
-              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Total Actions</div><div class="saving-val" id="interventionCount">7</div></div>
+              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">LDU Corrections</div><div class="saving-val" id="interventionCount">0</div></div>
             </div>
             <div class="saving-item">
               <div class="saving-icon">🚫</div>
-              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Blackouts Prevented</div><div class="saving-val" id="blackoutsPrevented">2</div></div>
+              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Demand Met Steps</div><div class="saving-val" id="blackoutsPrevented">0</div></div>
             </div>
             <div class="saving-item">
               <div class="saving-icon">⚡</div>
-              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Recovery Events</div><div class="saving-val" id="recoveryEvents">4</div></div>
+              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Recovery Events</div><div class="saving-val" id="recoveryEvents">0</div></div>
             </div>
           </div>
         </div>
@@ -579,6 +582,7 @@ const API = '';
 let sessionId = null, timer = null;
 const historyData = [];
 let dayCurveData = [];
+const runtimeStats = { steps: 0, correctionSteps: 0, zeroUnmetSteps: 0, recoveryEvents: 0, prevUnmet: 0 };
 const INR_PER_USD = 100;
 
 const TASK_CURVE_CONFIG = {
@@ -659,19 +663,32 @@ function updateBidLadder(renew, peak, demand) {
   `;
 }
 
-function updatePowerFlow(renew, peak, ev, delivered, loss) {
+function updatePowerFlow(renew, peak, evCharge, evDischarge, evStorage, evCapacity, delivered, loss) {
   // SVG nodes
   document.getElementById('nodeRenew').textContent = Math.round(renew);
   document.getElementById('nodePeaker').textContent = Math.round(peak);
-  document.getElementById('nodeEV').textContent = ev > 0 ? Math.round(ev) + '⚡' : '0';
+  const socPct = Math.max(0, Math.min(100, (evStorage / Math.max(1e-6, evCapacity)) * 100));
+  const evSocEl = document.getElementById('nodeEV');
+  evSocEl.textContent = `SOC ${socPct.toFixed(0)}%`;
+  evSocEl.style.fill = socPct < 25 ? 'var(--red)' : socPct < 45 ? 'var(--yellow)' : 'var(--purple)';
+  document.getElementById('nodeEVFlow').textContent = `CH ${evCharge.toFixed(1)} | DIS ${evDischarge.toFixed(1)}`;
   document.getElementById('nodeLDU').textContent = Math.round(delivered);
   document.getElementById('nodeLoad').textContent = Math.round(delivered);
-  const grossFlow = Math.max(1e-6, renew + peak + Math.max(0, ev));
+  const grossFlow = Math.max(1e-6, renew + peak + Math.max(0, evDischarge));
   const lossPct = (loss / grossFlow) * 100;
   const lossEl = document.getElementById('nodeLoss');
   lossEl.textContent = `${loss.toFixed(1)} MW (${lossPct.toFixed(1)}%)`;
   lossEl.style.fill = lossPct < 3.5 ? 'var(--yellow)' : 'var(--red)';
-  
+
+  const socStatEl = document.getElementById('evSocStat');
+  if (socStatEl) {
+    socStatEl.textContent = `${socPct.toFixed(0)}% (${evStorage.toFixed(1)} MWh)`;
+    socStatEl.style.color = socPct < 25 ? 'var(--red)' : socPct < 45 ? 'var(--yellow)' : 'var(--purple)';
+  }
+  const cdStatEl = document.getElementById('evCdStat');
+  if (cdStatEl) {
+    cdStatEl.textContent = `${evCharge.toFixed(1)} / ${evDischarge.toFixed(1)} MW`;
+  }
 }
 
 function updateDispatch(d) {
@@ -698,12 +715,18 @@ function updateRisk(supply, demand) {
 }
 
 function updateScore(r) {
+  const reliabilityPct = (r.demand_satisfaction_score * 100).toFixed(0);
+  const economicPct = (r.cost_efficiency_score * 100).toFixed(0);
+  const greenPct = (r.renewable_utilization_score * 100).toFixed(0);
+  const penaltyVal = (r.infeasibility_penalty + r.blackout_penalty).toFixed(2);
+  const totalPct = (r.score * 100).toFixed(1);
   document.getElementById('scoreBreakdown').innerHTML = `
-    <div class="score-row"><span>Reliability</span><span class="score-pos">+${r.demand_satisfaction_score.toFixed(2)}</span></div>
-    <div class="score-row"><span>Economic</span><span class="score-pos">+${r.cost_efficiency_score.toFixed(2)}</span></div>
-    <div class="score-row"><span>Green</span><span class="score-pos">+${r.renewable_utilization_score.toFixed(2)}</span></div>
-    <div class="score-row"><span>Penalties</span><span class="score-neg">-${(r.infeasibility_penalty + r.blackout_penalty).toFixed(2)}</span></div>
-    <div class="score-row score-total"><span>TOTAL</span><span>${r.score.toFixed(2)}</span></div>
+    <div class="score-row"><span>Reliability</span><span class="score-pos">${reliabilityPct}%</span></div>
+    <div class="score-row"><span>Economic</span><span class="score-pos">${economicPct}%</span></div>
+    <div class="score-row"><span>Green</span><span class="score-pos">${greenPct}%</span></div>
+    <div class="score-row"><span>Penalty Index</span><span class="score-neg">${penaltyVal}</span></div>
+    <div class="score-row score-total"><span>TOTAL</span><span>${totalPct}%</span></div>
+    <div class="score-row" style="font-size:8px;color:var(--dim)"><span>Raw Score</span><span>${r.score.toFixed(3)}</span></div>
   `;
 }
 
@@ -807,11 +830,11 @@ function updateCongestion(renew, peak, ev, delivered, demand, peakerCap) {
   setLineLoad('cellLDULoad', 'lineLDULoad', lduToLoad);
 }
 
-function updateResilienceScores(demand, supply, renewableUtil, cost) {
-  const reliability = Math.max(0, 100 - (demand - supply) / demand * 50);
-  const efficiency = Math.max(0, 100 - cost / 100);
-  const greenScore = renewableUtil;
-  const resilience = (reliability + efficiency + greenScore) / 3;
+function updateResilienceScores(reward) {
+  const reliability = Math.max(0, Math.min(100, reward.demand_satisfaction_score * 100));
+  const efficiency = Math.max(0, Math.min(100, reward.cost_efficiency_score * 100));
+  const greenScore = Math.max(0, Math.min(100, reward.renewable_utilization_score * 100));
+  const resilience = Math.max(0, Math.min(100, reward.score * 100));
   
   document.getElementById('reliabilityScore').textContent = Math.round(reliability);
   document.getElementById('efficiencyScore').textContent = Math.round(efficiency);
@@ -819,10 +842,17 @@ function updateResilienceScores(demand, supply, renewableUtil, cost) {
   document.getElementById('resilienceScore').textContent = Math.round(resilience);
 }
 
-function updatePolicyConfidence(scarcity) {
-  const confidence = Math.max(50, 100 - scarcity * 60);
-  const exploration = Math.min(30, scarcity * 50);
-  const riskPosture = scarcity > 0.4 ? 'Defensive' : scarcity > 0.2 ? 'Balanced' : 'Aggressive';
+function updatePolicyConfidence(reward, dispatch, scarcity) {
+  const unmetRatio = dispatch.unmet_demand_mwh / Math.max(1, dispatch.delivered_supply_mwh + dispatch.unmet_demand_mwh);
+  const confidence = Math.max(
+    5,
+    Math.min(
+      99,
+      20 + reward.score * 70 + (1 - unmetRatio) * 10 - dispatch.correction_count * 4 - scarcity * 15
+    )
+  );
+  const exploration = Math.max(5, Math.min(45, 8 + scarcity * 30 + (1 - reward.score) * 20));
+  const riskPosture = unmetRatio > 0.05 || scarcity > 0.45 ? 'Defensive' : scarcity > 0.2 ? 'Balanced' : 'Aggressive';
   
   document.getElementById('confidenceVal').textContent = Math.round(confidence) + '%';
   document.getElementById('explorationVal').textContent = Math.round(exploration) + '%';
@@ -834,14 +864,16 @@ function updatePolicyConfidence(scarcity) {
   }
 }
 
-function updateInterventions(step) {
-  const interventionCount = Math.floor(Math.random() * step + 3);
-  const blackoutsPrevented = Math.floor(interventionCount * 0.25);
-  const recoveryEvents = Math.floor(interventionCount * 0.5);
-  
-  document.getElementById('interventionCount').textContent = interventionCount;
-  document.getElementById('blackoutsPrevented').textContent = blackoutsPrevented;
-  document.getElementById('recoveryEvents').textContent = recoveryEvents;
+function updateInterventions(dispatch) {
+  runtimeStats.steps += 1;
+  if (dispatch.correction_count > 0) runtimeStats.correctionSteps += 1;
+  if (dispatch.unmet_demand_mwh <= 1e-6) runtimeStats.zeroUnmetSteps += 1;
+  if (runtimeStats.prevUnmet > 1e-6 && dispatch.unmet_demand_mwh <= 1e-6) runtimeStats.recoveryEvents += 1;
+  runtimeStats.prevUnmet = dispatch.unmet_demand_mwh;
+
+  document.getElementById('interventionCount').textContent = runtimeStats.correctionSteps;
+  document.getElementById('blackoutsPrevented').textContent = runtimeStats.zeroUnmetSteps;
+  document.getElementById('recoveryEvents').textContent = runtimeStats.recoveryEvents;
 }
 
 function addTimelineEvent(time, event, priority) {
@@ -953,6 +985,11 @@ async function reset() {
   const data = await api('/reset', {task_id: task, seed: 42});
   sessionId = data.session_id;
   historyData.length = 0;
+  runtimeStats.steps = 0;
+  runtimeStats.correctionSteps = 0;
+  runtimeStats.zeroUnmetSteps = 0;
+  runtimeStats.recoveryEvents = 0;
+  runtimeStats.prevUnmet = 0;
   dayCurveData = buildDayCurve(task);
   drawChart();
   document.getElementById('kScenario').textContent = task.toUpperCase();
@@ -980,13 +1017,32 @@ async function step() {
   let renQt, peakQt, peakPr, evC, evD;
   
   if (pol === 'adaptive') {
-    renQt = Math.min(r, d * (0.52 + 0.18 * (1 - scarcity)));
-    peakQt = Math.min(p, (d - renQt) * (1 + 0.25 * scarcity));
-    peakPr = leader * 1.1;
+    renQt = Math.min(r, d * (0.58 + 0.20 * (1 - scarcity)));
+    const peakerNeed = Math.max(0, d - renQt);
+    peakQt = Math.min(p, peakerNeed * (1 + 0.18 * scarcity));
+    peakPr = Math.max(40, leader * (1.08 + 0.08 * scarcity));
     const minS = cap * 0.2, maxS = cap * 0.8;
-    if (soc <= 0.35) { evC = Math.min(maxS - storage, 5); evD = 0; }
-    else if (soc <= 0.5) { evC = scarcity > 0.4 ? 0 : Math.min(maxS - storage, 3); evD = scarcity > 0.4 ? Math.min(storage - minS, 2 + 4 * scarcity) : 0; }
-    else { evC = 0; evD = scarcity > 0.2 ? Math.min(storage - minS, 4 + 5 * scarcity) : 0; }
+    if (soc <= 0.35) {
+      evC = Math.min(maxS - storage, 5);
+      evD = 0;
+    } else if (scarcity > 0.45 && soc > 0.25) {
+      evD = Math.min(storage - minS, 2.5 + 5.5 * scarcity);
+      evC = 0;
+    } else if (r > d * 0.9 && soc < 0.75) {
+      evC = Math.min(maxS - storage, 4.5);
+      evD = 0;
+    } else if (scarcity < 0.15 && soc < 0.55) {
+      evC = Math.min(maxS - storage, 2.5);
+      evD = 0;
+    } else if (scarcity > 0.25 && soc > 0.55) {
+      evD = Math.min(storage - minS, 2.0 + 3.5 * scarcity);
+      evC = 0;
+    } else {
+      evC = 0;
+      evD = 0;
+    }
+    if (soc >= 0.79) evC = 0;
+    if (soc <= 0.21) evD = 0;
     evC = Math.max(0, evC); evD = Math.max(0, evD);
   } else if (pol === 'heuristic') {
     renQt = Math.min(r, d * 0.55); peakQt = Math.min(p, d - renQt); peakPr = leader * 1.02;
@@ -1008,13 +1064,25 @@ async function step() {
   const info = res.info, disp = info.dispatch, mkt = info.market;
   
   document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_steps;
-  document.getElementById('kReward').textContent = res.reward.score.toFixed(2);
+  const rewardPct = res.reward.score * 100;
+  const kRewardEl = document.getElementById('kReward');
+  kRewardEl.textContent = rewardPct.toFixed(1) + '%';
+  kRewardEl.style.color = rewardPct >= 75 ? 'var(--green)' : rewardPct >= 45 ? 'var(--yellow)' : 'var(--red)';
   
   updateBidLadder(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, d);
   document.getElementById('clearingPrice').textContent = '₹' + toInr(mkt.clearing_price || 0).toLocaleString('en-IN');
   document.getElementById('clearingMW').textContent = (mkt.cleared_mwh || 0).toFixed(0) + ' MW';
   
-  updatePowerFlow(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh, disp.delivered_supply_mwh, disp.transmission_loss_mwh);
+  updatePowerFlow(
+    disp.renewable_dispatch_mwh,
+    disp.peaker_dispatch_mwh,
+    disp.ev_charge_mwh,
+    disp.ev_discharge_mwh,
+    res.observation.ev_storage_mwh,
+    res.observation.ev_storage_capacity_mwh,
+    disp.delivered_supply_mwh,
+    disp.transmission_loss_mwh
+  );
   updateDispatch(disp);
   
   historyData.push({demand: d, renewable: r, supply: disp.delivered_supply_mwh});
@@ -1024,7 +1092,9 @@ async function step() {
   
   const rew = res.reward;
   document.getElementById('policyName').textContent = pol.toUpperCase() + ' POLICY';
-  document.getElementById('policyReason').textContent = scarcity > 0.3 ? 'High scarcity - Emergency dispatch' : 'Balanced operation';
+  const metPct = (rew.demand_satisfaction_score * 100).toFixed(0);
+  const penalty = (rew.infeasibility_penalty + rew.blackout_penalty).toFixed(2);
+  document.getElementById('policyReason').textContent = `Demand met ${metPct}% | Scarcity ${Math.round(scarcity * 100)}% | Penalty ${penalty}`;
   updateScore(rew);
   
   // NEW MODULE UPDATES
@@ -1041,9 +1111,9 @@ async function step() {
     d,
     p
   );
-  updateResilienceScores(d, disp.delivered_supply_mwh, rew.renewable_utilization_score * 10, rew.cost_efficiency_score);
-  updatePolicyConfidence(scarcity);
-  updateInterventions(obs.step);
+  updateResilienceScores(rew);
+  updatePolicyConfidence(rew, disp, scarcity);
+  updateInterventions(disp);
   
   // Add timeline events
   if (scarcity > 0.4) addTimelineEvent(obs.step, 'High demand period detected', 'warning');
