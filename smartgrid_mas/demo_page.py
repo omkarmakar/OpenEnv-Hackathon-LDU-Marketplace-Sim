@@ -4,354 +4,828 @@ def build_demo_html() -> str:
 <head>
   <meta charset='utf-8'>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
-  <title>SmartGrid - Energy Market Simulator</title>
+  <title>⚡ GRID OPS COMMAND CENTER</title>
   <style>
-    :root { --bg: #0d1117; --panel: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --green: #3fb950; --red: #f85149; --yellow: #d29922; --blue: #58a6ff; --purple: #a371f7; --cyan: #39d0d6; --orange: #f0883e; }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    :root {
+      --bg-dark: #0a0d12; --bg-panel: #111820; --bg-light: #1a2230;
+      --border: #2a3545; --border-glow: #3a4555;
+      --text: #c8d4e4; --text-dim: #6b7a8a; --text-bright: #e8f0f8;
+      --green: #22c55e; --green-dim: #166534;
+      --red: #ef4444; --red-dim: #991b1b;
+      --yellow: #eab308; --yellow-dim: #854d0e;
+      --blue: #3b82f6; --blue-dim: #1e40af;
+      --purple: #a855f7; --cyan: #06b6d4;
+      --orange: #f97316; --teal: #14b8a6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg-dark); color: var(--text); font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace; overflow-x: hidden; }
     
-    .topbar { background: linear-gradient(90deg, #1a2a1a, #0d1117, #1a2a1a); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-    .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-    .logo span { color: var(--green); }
-    .status-pill { background: var(--panel); padding: 4px 12px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+    /* TOP COMMAND STRIP */
+    .command-strip {
+      background: linear-gradient(90deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
+      border-bottom: 1px solid var(--border-glow);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 52px;
+    }
+    .strip-left, .strip-center, .strip-right { display: flex; align-items: center; gap: 20px; }
+    .mission-title { font-size: 18px; font-weight: 700; letter-spacing: 1px; }
+    .mission-title span { color: var(--green); }
     
-    .controls { background: var(--panel); padding: 10px 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border); }
-    select, button { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; }
-    button { font-weight: 600; }
-    button:hover { background: var(--border); }
-    button.primary { background: var(--green); color: var(--bg); border: none; }
-    button.danger { background: var(--red); color: white; border: none; }
+    .kpi-pill {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .kpi-pill .label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; }
+    .kpi-pill .value { font-size: 14px; font-weight: 700; }
+    .kpi-pill .value.green { color: var(--green); }
+    .kpi-pill .value.amber { color: var(--yellow); }
+    .kpi-pill .value.red { color: var(--red); }
     
-    .main { display: grid; grid-template-columns: 1fr 340px; gap: 12px; padding: 12px; }
-    .left-panel { display: grid; grid-template-rows: auto auto 1fr; gap: 12px; }
-    .right-panel { display: flex; flex-direction: column; gap: 12px; }
+    .status-indicator {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px;
+    }
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    .status-dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-dot.amber { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+    .status-dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
-    .card-title { font-size: 11px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 10px; font-weight: 600; }
+    /* MAIN LAYOUT */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+      padding: 2px;
+      height: calc(100vh - 56px);
+      background: var(--bg-dark);
+    }
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-red { outline: 2px solid var(--red); }
+    .panel-flash { animation: flash 0.5s; }
+    @keyframes flash { 0%,100% { outline-color: var(--border); } 50% { outline-color: var(--red); } }
     
-    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .kpi { background: var(--bg); border-radius: 8px; padding: 12px; text-align: center; }
-    .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
-    .kpi-value { font-size: 28px; font-weight: 700; }
-    .kpi-value.green { color: var(--green); }
-    .kpi-value.red { color: var(--red); }
-    .kpi-value.yellow { color: var(--yellow); }
-    .kpi-value.blue { color: var(--blue); }
-    .kpi-value.purple { color: var(--purple); }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+    .panel-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: var(--bg-light);
+      color: var(--text-dim);
+    }
     
-    .energy-flow { display: flex; align-items: center; justify-content: space-around; padding: 16px; background: var(--bg); border-radius: 8px; }
-    .flow-box { text-align: center; }
-    .flow-icon { font-size: 32px; }
-    .flow-name { font-size: 11px; color: var(--muted); margin: 4px 0 2px; }
-    .flow-value { font-size: 20px; font-weight: 700; }
-    .flow-arrow { font-size: 20px; color: var(--muted); }
-    .flow-arrow.charging { color: var(--green); }
-    .flow-arrow.discharging { color: var(--red); }
+    /* MARKET DYNAMICS - Left Top */
+    .order-ladder {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+      font-size: 10px;
+    }
+    .ladder-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .ladder-col.supply { border-right: 1px solid var(--border); padding-right: 8px; margin-right: 8px; }
+    .ladder-col.demand { }
+    .ladder-header {
+      font-size: 9px; color: var(--text-dim); text-transform: uppercase;
+      padding: 4px; background: var(--bg-light); border-radius: 3px; margin-bottom: 4px;
+    }
+    .ladder-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 4px;
+      border-radius: 2px;
+      margin-bottom: 2px;
+    }
+    .ladder-row .agent { color: var(--text-dim); }
+    .ladder-row .mw { font-weight: 600; }
+    .ladder-row .price { color: var(--text-dim); }
+    .ladder-row.solar { border-left: 2px solid var(--green); }
+    .ladder-row.peaker { border-left: 2px solid var(--orange); }
+    .ladder-row.demand { border-left: 2px solid var(--blue); }
     
-    .battery-viz { display: flex; gap: 2px; height: 60px; align-items: flex-end; justify-content: center; padding: 10px; background: var(--bg); border-radius: 8px; }
-    .bat-cell { width: 30px; background: var(--border); opacity: 0.3; border-radius: 2px; }
-    .bat-cell.filled { opacity: 1; }
-    .bat-cell.danger { background: var(--red); }
-    .bat-cell.warn { background: var(--yellow); }
-    .bat-cell.good { background: var(--green); }
-    .bat-cell.full { background: var(--purple); }
-    .bat-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--muted); margin-top: 4px; }
+    .clearing-cross {
+      text-align: center;
+      padding: 8px;
+      background: var(--bg-light);
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+    .clearing-cross .price { font-size: 20px; font-weight: 700; color: var(--cyan); }
+    .clearing-cross .mw { color: var(--text-dim); font-size: 10px; }
     
-    .bid-table { font-size: 13px; }
-    .bid-row { display: flex; justify-content: space-between; padding: 8px; background: var(--bg); border-radius: 6px; margin-bottom: 4px; align-items: center; }
-    .bid-row .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-    .bid-row .amt { font-weight: 700; }
-    .bid-row .price { color: var(--muted); font-size: 12px; }
+    /* POWER FLOW - Center */
+    .power-flow {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #0d1117 0%, #141e28 100%);
+    }
+    .flow-svg {
+      width: 100%;
+      height: 100%;
+    }
+    .node {
+      fill: var(--bg-light);
+      stroke: var(--border);
+      stroke-width: 2;
+    }
+    .node-label {
+      fill: var(--text);
+      font-size: 10px;
+      text-anchor: middle;
+    }
+    .node-value {
+      fill: var(--text-bright);
+      font-size: 12px;
+      font-weight: 700;
+      text-anchor: middle;
+    }
+    .flow-line {
+      stroke: var(--green);
+      stroke-width: 2;
+      stroke-dasharray: none;
+      opacity: 0.7;
+      animation: flowPulse 1s infinite;
+    }
+    .flow-line.thick { stroke-width: 4; }
+    @keyframes flowPulse { 0%,100% { opacity: 0.7; } 50% { opacity: 0.3; } }
     
-    .reward-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
-    .reward-row .label { color: var(--muted); }
-    .reward-row .val { font-weight: 600; }
-    .reward-row .pos { color: var(--green); }
-    .reward-row .neg { color: var(--red); }
-    .reward-total { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 6px; font-weight: 700; font-size: 14px; }
+    .flow-particle {
+      fill: var(--green);
+      animation: particleMove 1s linear infinite;
+    }
+    @keyframes particleMove {
+      0% { offset-distance: 0%; }
+      100% { offset-distance: 100%; }
+    }
     
-    .chart-area { height: 120px; background: var(--bg); border-radius: 8px; position: relative; }
-    .chart-area canvas { width: 100%; height: 100%; }
+    /* LDU DISPATCH - Right Top */
+    .dispatch-table {
+      font-size: 11px;
+    }
+    .dispatch-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dispatch-row .label { color: var(--text-dim); }
+    .dispatch-row .value { font-weight: 600; }
+    .dispatch-row .value.green { color: var(--green); }
+    .dispatch-row .value.red { color: var(--red); }
+    .dispatch-row .value.yellow { color: var(--yellow); }
     
-    .simple-log { font-size: 11px; max-height: 100px; overflow-y: auto; }
-    .simple-log div { padding: 4px 6px; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .events-log {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .event-row {
+      padding: 4px 6px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+    .event-row .ts { color: var(--text-dim); min-width: 50px; }
+    .event-row .msg { flex: 1; }
+    .event-row.error { color: var(--red); }
+    .event-row.warn { color: var(--yellow); }
+    .event-row.shock { color: var(--orange); }
     
-    .explanation { font-size: 12px; line-height: 1.5; color: var(--text); }
-    .explanation .highlight { background: var(--bg); padding: 8px; border-radius: 6px; border-left: 3px solid var(--blue); margin-top: 6px; }
+    /* STABILITY - Bottom Left */
+    .chart-container {
+      flex: 1;
+      position: relative;
+    }
+    .chart-canvas {
+      width: 100%;
+      height: 100%;
+    }
     
-    .warning-box { background: rgba(248, 81, 73, 0.15); border: 1px solid var(--red); border-radius: 6px; padding: 8px; font-size: 12px; color: var(--red); display: none; }
-    .warning-box.show { display: block; }
+    /* SHOCK RISK - Bottom Center */
+    .threat-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .gauge-box {
+      text-align: center;
+      padding: 10px;
+      background: var(--bg-light);
+      border-radius: 6px;
+    }
+    .gauge-value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .gauge-value.green { color: var(--green); }
+    .gauge-value.amber { color: var(--yellow); }
+    .gauge-value.red { color: var(--red); }
+    .gauge-label { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
     
-    @media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+    .threat-list {
+      font-size: 10px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .threat-item {
+      padding: 4px 6px;
+      margin-bottom: 4px;
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 2px solid var(--red);
+      border-radius: 0 3px 3px 0;
+    }
+    
+    /* RL DECISION - Bottom Right */
+    .brain-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .policy-card {
+      background: var(--bg-light);
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .policy-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cyan);
+    }
+    .policy-reason {
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    
+    .score-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .score-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+    }
+    .score-item .label { color: var(--text-dim); }
+    .score-item .pos { color: var(--green); }
+    .score-item .neg { color: var(--red); }
+    .score-total {
+      border-top: 1px solid var(--border);
+      padding-top: 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    
+    /* CONTROLS */
+    .controls-bar {
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .ctrl-btn {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .ctrl-btn:hover { background: var(--border); }
+    .ctrl-btn.green { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .ctrl-btn.red { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+    .ctrl-btn.active { box-shadow: 0 0 10px var(--green); }
+    
+    /* GLOW EFFECTS */
+    .glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+    .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+    .glow-amber { box-shadow: 0 0 20px rgba(234, 179, 8, 0.3); }
+    
+    /* RESPONSIVE */
+    @media (max-width: 1200px) {
+      .main-grid { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+      .panel:nth-child(3) { grid-column: span 2; }
+    }
+    @media (max-width: 800px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .panel { min-height: 250px; }
+    }
   </style>
 </head>
 <body>
-  <div class='topbar'>
-    <div class='logo'>⚡ <span>SmartGrid</span></div>
-    <div class='status-pill'><div class='status-dot'></div><span id='connStatus'>Ready</span></div>
+  <!-- TOP STRIP -->
+  <div class="command-strip">
+    <div class="strip-left">
+      <div class="mission-title">⚡ <span>GRID OPS</span> COMMAND CENTER</div>
+    </div>
+    <div class="strip-center">
+      <div class="kpi-pill">
+        <span class="label">Timestep</span>
+        <span class="value" id="tsCurrent">0</span>
+        <span class="value" style="color:#6b7a8a">/</span>
+        <span class="value" id="tsMax">0</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="label">Scenario</span>
+        <span class="value" id="scenarioName">-</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="label">Status</span>
+        <span class="value green" id="simStatus">READY</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="label">Shock</span>
+        <span class="value" id="shockProb">Low</span>
+      </div>
+    </div>
+    <div class="strip-right">
+      <div class="status-indicator">
+        <div class="status-dot green" id="globalStatus"></div>
+        <span>LIVE</span>
+      </div>
+      <div class="kpi-pill">
+        <span class="label">Reward</span>
+        <span class="value green" id="globalReward">0.00</span>
+      </div>
+    </div>
   </div>
   
-  <div class='controls'>
-    <select id='task'><option value='default'>Default (24 steps)</option><option value='long_horizon'>Long Horizon (48)</option><option value='stress_shock'>Stress Shock (30)</option></select>
-    <select id='policy'><option value='adaptive'>Smart Policy</option><option value='heuristic'>Rule Policy</option><option value='random'>Random</option></select>
-    <button id='resetBtn' class='primary'>🔄 New Game</button>
-    <button id='stepBtn'>Step ▶</button>
-    <button id='playBtn'>▶▶ Auto Run</button>
-    <button id='pauseBtn'>⏸ Stop</button>
-    <button id='shockBtn' class='danger'>⚡ Add Shock</button>
-    <select id='speed'><option value='80'>Fast</option><option value='300'>Normal</option><option value='800'>Slow</option></select>
-  </div>
-  
-  <div class='main'>
-    <div class='left-panel'>
-      <div class='card'>
-        <div class='card-title'>⚡ Energy Balance</div>
-        <div class='kpi-grid'>
-          <div class='kpi'><div class='kpi-label'>Demand</div><div class='kpi-value blue' id='kDemand'>0</div></div>
-          <div class='kpi'><div class='kpi-label'>Supply</div><div class='kpi-value green' id='kSupply'>0</div></div>
-          <div class='kpi'><div class='kpi-label'>Score</div><div class='kpi-value' id='kScore'>0.00</div></div>
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+    <!-- MARKET DYNAMICS -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Market Intelligence</span>
+        <span class="panel-badge">LIVE</span>
+      </div>
+      <div class="order-ladder">
+        <div class="ladder-col supply">
+          <div class="ladder-header">SUPPLY</div>
+          <div id="supplyBids"></div>
+        </div>
+        <div class="ladder-col demand">
+          <div class="ladder-header">DEMAND</div>
+          <div id="demandBids"></div>
         </div>
       </div>
-      
-      <div class='card'>
-        <div class='card-title'>🔋 EV Battery (20% - 80%)</div>
-        <div class='battery-viz' id='batteryViz'></div>
-        <div class='bat-labels'><span>0%</span><span>20%</span><span>80%</span><span>100%</span></div>
-        <div class='warning-box' id='batteryWarning'>⚠️ Battery hit limit!</div>
-      </div>
-      
-      <div class='card'>
-        <div class='card-title'>📈 Supply vs Demand</div>
-        <div class='chart-area'><canvas id='mainChart'></canvas></div>
+      <div class="clearing-cross">
+        <div class="price" id="clearingPrice">$0</div>
+        <div class="mw" id="clearingMW">0 MW @</div>
       </div>
     </div>
     
-    <div class='right-panel'>
-      <div class='card'>
-        <div class='card-title'>💰 Market Bids</div>
-        <div class='bid-table' id='bidTable'></div>
+    <!-- POWER FLOW DIGITAL TWIN -->
+    <div class="panel" id="powerPanel">
+      <div class="panel-header">
+        <span class="panel-title">Physical Grid Control</span>
+        <span class="panel-badge">DIGITAL TWIN</span>
       </div>
-      
-      <div class='card'>
-        <div class='card-title'>📊 How Score Works</div>
-        <div class='reward-row'><span class='label'>Satisfaction</span><span class='val pos' id='rSatisf'>+0.00</span></div>
-        <div class='reward-row'><span class='label'>Cost Savings</span><span class='val pos' id='rCost'>+0.00</span></div>
-        <div class='reward-row'><span class='label'>Green Energy</span><span class='val pos' id='rGreen'>+0.00</span></div>
-        <div class='reward-row'><span class='label'>Stability</span><span class='val pos' id='rStable'>+0.00</span></div>
-        <div class='reward-row'><span class='label'>Corrections</span><span class='val neg' id='rPenalty'>-0.00</span></div>
-        <div class='reward-row'><span class='label'>Blackouts</span><span class='val neg' id='rBlackout'>-0.00</span></div>
-        <div class='reward-row total'><span class='label'>TOTAL SCORE</span><span class='val' id='rTotal'>0.00</span></div>
+      <svg class="flow-svg" viewBox="0 0 400 200">
+        <!-- Solar Node -->
+        <g transform="translate(40, 40)">
+          <circle cx="0" cy="0" r="20" class="node"/>
+          <text x="0" y="-28" class="node-label">☀️ RENEWABLE</text>
+          <text x="0" y="5" class="node-value" id="nodeRenew">0</text>
+          <text x="0" y="35" class="node-label">MW</text>
+        </g>
+        <!-- Flow lines -->
+        <path d="M60,40 L120,40" class="flow-line thick" id="flow1"/>
+        <!-- Peaker Node -->
+        <g transform="translate(140, 40)">
+          <circle cx="0" cy="0" r="20" class="node"/>
+          <text x="0" y="-28" class="node-label">🏭 PEAKER</text>
+          <text x="0" y="5" class="node-value" id="nodePeaker">0</text>
+          <text x="0" y="35" class="node-label">MW</text>
+        </g>
+        <path d="M160,40 L200,40" class="flow-line" id="flow2"/>
+        <!-- EV Node -->
+        <g transform="translate(40, 160)">
+          <circle cx="0" cy="0" r="18" class="node"/>
+          <text x="0" y="-25" class="node-label">🔋 EV</text>
+          <text x="0" y="5" class="node-value" id="nodeEV">0%</text>
+        </g>
+        <path d="M50,145 L50,100 L200,100" class="flow-line" id="flow3"/>
+        <!-- LDU Node (Center) -->
+        <g transform="translate(200, 100)">
+          <rect x="-25" y="-25" width="50" height="50" rx="4" class="node"/>
+          <text x="0" y="-35" class="node-label">LDU UNIT</text>
+          <text x="0" y="8" class="node-value" id="nodeLDU">0</text>
+          <text x="0" y="40" class="node-label">MW Out</text>
+        </g>
+        <!-- Industrial Node -->
+        <g transform="translate(360, 100)">
+          <circle cx="0" cy="0" r="22" class="node"/>
+          <text x="0" y="-30" class="node-label">🏭 LOAD</text>
+          <text x="0" y="5" class="node-value" id="nodeLoad">0</text>
+          <text x="0" y="40" class="node-label">MW Demand</text>
+        </g>
+        <path d="M250,100 L338,100" class="flow-line thick" id="flow4"/>
+        <!-- Loss indicator -->
+        <g transform="translate(230, 70)">
+          <text x="0" y="0" class="node-label" style="fill:#ef4444;font-size:9px">⚡ LOSS: <tspan id="nodeLoss">0</tspan> MW (3%)</text>
+        </g>
+      </svg>
+    </div>
+    
+    <!-- LDU DISPATCH -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">LDU Dispatch Control</span>
+        <span class="panel-badge" id="correctionBadge">0 CORR</span>
       </div>
-      
-      <div class='card'>
-        <div class='card-title'>📜 What Happened</div>
-        <div class='simple-log' id='activityLog'></div>
+      <div class="dispatch-table">
+        <div class="dispatch-row"><span class="label">Renewables Dispatch</span><span class="value green" id="dispRenew">0</span><span class="label">MW</span></div>
+        <div class="dispatch-row"><span class="label">Peaker Dispatch</span><span class="value green" id="dispPeaker">0</span><span class="label">MW</span></div>
+        <div class="dispatch-row"><span class="label">EV Discharge</span><span class="value" id="dispEV">0</span><span class="label">MW</span></div>
+        <div class="dispatch-row"><span class="label">Transmission Loss</span><span class="value yellow" id="dispLoss">0</span><span class="label">MW</span></div>
+        <div class="dispatch-row"><span class="label">Storage Loss</span><span class="value yellow" id="dispStorLoss">0</span><span class="label">MW</span></div>
+        <div class="dispatch-row"><span class="label">Net Delivered</span><span class="value green" id="dispNet">0</span><span class="label">MW</span></div>
+        <div class="dispatch-row"><span class="label">Unmet Demand</span><span class="value red" id="dispUnmet">0</span><span class="label">MW</span></div>
+      </div>
+      <div class="panel-header" style="margin-top:12px">
+        <span class="panel-title">Event Log</span>
+      </div>
+      <div class="events-log" id="eventLog"></div>
+    </div>
+    
+    <!-- STABILITY CHART -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Stability Analytics</span>
+        <span class="panel-badge">HISTORY</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="stabilityChart"></canvas>
       </div>
     </div>
+    
+    <!-- SHOCK RISK -->
+    <div class="panel" id="riskPanel">
+      <div class="panel-header">
+        <span class="panel-title">Shock / Risk Theater</span>
+        <span class="panel-badge" id="riskBadge">NORMAL</span>
+      </div>
+      <div class="threat-panel">
+        <div class="gauge-box">
+          <div class="gauge-value green" id="blackoutRisk">0%</div>
+          <div class="gauge-label">Blackout Risk</div>
+        </div>
+        <div class="gauge-box">
+          <div class="gauge-value green" id="gridStress">0%</div>
+          <div class="gauge-label">Grid Stress</div>
+        </div>
+      </div>
+      <div class="threat-list" id="threatList">
+        <div class="threat-item">System Nominal</div>
+      </div>
+    </div>
+    
+    <!-- RL DECISION -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">RL Decision Intelligence</span>
+        <span class="panel-badge">AI THINKING</span>
+      </div>
+      <div class="brain-panel">
+        <div class="policy-card">
+          <div class="policy-name" id="policyName">Adaptive Policy</div>
+          <div class="policy-reason" id="policyReason">Analyzing grid state...</div>
+        </div>
+        <div class="score-bar">
+          <div class="score-item"><span class="label">Reliability</span><span class="pos" id="sRel">+0.00</span></div>
+          <div class="score-item"><span class="label">Economic</span><span class="pos" id="sEcon">+0.00</span></div>
+          <div class="score-item"><span class="label">Green</span><span class="pos" id="sGreen">+0.00</span></div>
+          <div class="score-item"><span class="label">Penalties</span><span class="neg" id="sPenal">-0.00</span></div>
+          <div class="score-item score-total"><span class="label">TOTAL</span><span class="value" id="sTotal">0.00</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- CONTROLS -->
+  <div class="controls-bar">
+    <select id="taskSel" class="ctrl-btn">
+      <option value="default">Default</option>
+      <option value="long_horizon">Long Horizon</option>
+      <option value="stress_shock">Stress Shock</option>
+    </select>
+    <select id="polSel" class="ctrl-btn">
+      <option value="adaptive">Smart Policy</option>
+      <option value="heuristic">Heuristic</option>
+      <option value="random">Random</option>
+    </select>
+    <button class="ctrl-btn green" id="resetBtn">🔄 NEW RUN</button>
+    <button class="ctrl-btn" id="stepBtn">STEP ▶</button>
+    <button class="ctrl-btn" id="playBtn">▶▶ RUN</button>
+    <button class="ctrl-btn" id="pauseBtn">⏸ PAUSE</button>
+    <button class="ctrl-btn red" id="shockBtn">⚡ SHOCK</button>
+    <button class="ctrl-btn" id="baselineBtn">📊 Baseline</button>
   </div>
 
 <script>
 const API = '';
 let sessionId = null, timer = null, obsCache = null;
-const rewardData = [], supplyData = [], demandData = [];
+const historyData = [];
 
-const canvas = document.getElementById('mainChart');
-const ctx = canvas.getContext('2d');
+const cvs = document.getElementById('stabilityChart');
+const ctx = cvs.getContext('2d');
 const dpr = window.devicePixelRatio || 1;
 
 function resize() {
-  const rc = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rc.width * dpr; canvas.height = 120 * dpr;
-  canvas.style.width = rc.width + 'px'; canvas.style.height = '120px';
+  const r = cvs.parentElement.getBoundingClientRect();
+  cvs.width = r.width * dpr; cvs.height = (r.height - 20) * dpr;
+  cvs.style.width = r.width + 'px'; cvs.style.height = (r.height - 20) + 'px';
   ctx.scale(dpr, dpr);
 }
 window.addEventListener('resize', resize);
 resize();
 
-function drawBattery(socPct) {
-  const el = document.getElementById('batteryViz');
-  const cells = 10;
-  const filled = Math.floor(socPct / 10);
-  let html = '';
-  for (let i = 0; i < cells; i++) {
-    let cls = 'bat-cell';
-    if (i < filled) {
-      cls += ' filled';
-      if (socPct < 25) cls += ' danger';
-      else if (socPct < 40) cls += ' warn';
-      else if (socPct < 70) cls += ' good';
-      else cls += ' full';
-    }
-    html += '<div class="' + cls + '"></div>';
-  }
-  el.innerHTML = html;
-  
-  const warn = document.getElementById('batteryWarning');
-  warn.className = socPct <= 22 || socPct >= 78 ? 'warning-box show' : 'warning-box';
-}
-
-function drawChart() {
-  const w = canvas.width / dpr, h = canvas.height / dpr;
-  ctx.fillStyle = '#0d1117';
-  ctx.fillRect(0, 0, w, h);
-  if (supplyData.length < 2) return;
-  
-  const max = Math.max(...demandData, ...supplyData, 150);
-  const step = w / Math.max(1, supplyData.length - 1);
-  
-  // Supply area
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-  supplyData.forEach((v, i) => ctx.lineTo(i * step, h - (v / max) * h * 0.9));
-  ctx.lineTo(w, h);
-  ctx.fillStyle = 'rgba(63, 185, 80, 0.2)';
-  ctx.fill();
-  
-  // Supply line
-  ctx.strokeStyle = '#3fb950';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  supplyData.forEach((v, i) => { if (i===0) ctx.moveTo(i*step, h-(v/max)*h*0.9); else ctx.lineTo(i*step, h-(v/max)*h*0.9); });
-  ctx.stroke();
-  
-  // Demand line
-  ctx.strokeStyle = '#58a6ff';
-  ctx.beginPath();
-  demandData.forEach((v, i) => { if (i===0) ctx.moveTo(i*step, h-(v/max)*h*0.9); else ctx.lineTo(i*step, h-(v/max)*h*0.9); });
-  ctx.stroke();
-}
-
-function log(msg) {
-  const el = document.getElementById('activityLog');
-  const div = document.createElement('div');
-  div.textContent = msg;
+function log(msg, type='') {
+  const el = document.getElementById('eventLog');
+  const div = Object.assign(document.createElement('div'), {className: 'event-row ' + type, innerHTML: `<span class="ts">T${document.getElementById('tsCurrent').textContent}</span><span class="msg">${msg}</span>`});
   el.insertBefore(div, el.firstChild);
+  while (el.children.length > 30) el.lastChild.remove();
+}
+
+function logThreat(msg) {
+  const el = document.getElementById('threatList');
+  const div = Object.assign(document.createElement('div'), {className: 'threat-item', textContent: msg});
+  el.insertBefore(div, el.firstChild);
+  while (el.children.length > 5) el.lastChild.remove();
 }
 
 async function api(path, body) {
   const opts = {method: body ? 'POST' : 'GET'};
   if (body) { opts.headers = {'Content-Type': 'application/json'}; opts.body = JSON.stringify(body); }
-  const res = await fetch(API + path, opts);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
 }
 
-function updateKPIs(data) {
-  document.getElementById('kDemand').textContent = Math.round(data.demand || 0);
-  document.getElementById('kSupply').textContent = Math.round(data.supply || 0);
-  document.getElementById('kScore').textContent = (data.reward || 0).toFixed(2);
-  document.getElementById('kScore').className = 'kpi-value ' + (data.reward > 0.5 ? 'green' : data.reward > 0.3 ? 'yellow' : 'red');
+function updateSupplyBids(ren, peak, price) {
+  const html = `
+    <div class="ladder-row solar"><span class="agent">Solar</span><span class="mw">${Math.round(ren)}</span><span class="price">$20</span></div>
+    <div class="ladder-row peaker"><span class="agent">Gas</span><span class="mw">${Math.round(peak)}</span><span class="price">$${Math.round(price)}</span></div>
+  `;
+  document.getElementById('supplyBids').innerHTML = html;
 }
 
-function updateReward(r) {
-  document.getElementById('rSatisf').textContent = '+' + (r.demand_satisfaction_score || 0).toFixed(2);
-  document.getElementById('rCost').textContent = '+' + (r.cost_efficiency_score || 0).toFixed(2);
-  document.getElementById('rGreen').textContent = '+' + (r.renewable_utilization_score || 0).toFixed(2);
-  document.getElementById('rStable').textContent = '+' + (r.stability_score || 0).toFixed(2);
-  document.getElementById('rPenalty').textContent = '-' + (r.infeasibility_penalty || 0).toFixed(2);
-  document.getElementById('rBlackout').textContent = '-' + (r.blackout_penalty || 0).toFixed(2);
-  document.getElementById('rTotal').textContent = (r.score || 0).toFixed(2);
+function updateDemandBids(demand, price) {
+  const html = `
+    <div class="ladder-row demand"><span class="agent">Factory</span><span class="mw">${Math.round(demand)}</span><span class="price">$${Math.round(price)}</span></div>
+  `;
+  document.getElementById('demandBids').innerHTML = html;
 }
 
-function updateBids(action) {
-  const colors = {'renewable_prosumer': '#3fb950', 'peaker_plant': '#f0883e', 'industrial_load': '#58a6ff', 'ev': '#a371f7'};
-  const names = {'renewable_prosumer': 'Solar/Wind', 'peaker_plant': 'Gas Plant', 'industrial_load': 'Factory', 'ev': 'EV Battery'};
-  let html = '';
-  action.bids.forEach(b => {
-    html += '<div class="bid-row"><div class="dot" style="background:' + colors[b.role] + '"></div><span>' + (names[b.role] || b.role) + '</span><div><span class="amt">' + Math.round(b.quantity_mwh) + '</span> <span class="price">@ $' + Math.round(b.price_usd_per_mwh) + '</span></div></div>';
-  });
-  const ev = action.ev_charge_mwh || 0, evd = action.ev_discharge_mwh || 0;
-  if (ev > 0 || evd > 0) {
-    html += '<div class="bid-row"><div class="dot" style="background:#a371f7"></div><span>EV ⚡</span><div><span class="amt">' + ev.toFixed(1) + '/' + evd.toFixed(1) + '</span> <span class="price">MWh</span></div></div>';
+function updatePowerFlow(renew, peak, evDis, delivered, loss) {
+  document.getElementById('nodeRenew').textContent = Math.round(renew);
+  document.getElementById('nodePeaker').textContent = Math.round(peak);
+  document.getElementById('nodeEV').textContent = evDis > 0 ? Math.round(evDis) + '⚡' : '0';
+  document.getElementById('nodeLDU').textContent = Math.round(delivered);
+  document.getElementById('nodeLoad').textContent = delivered;
+  document.getElementById('nodeLoss').textContent = loss.toFixed(1);
+}
+
+function updateDispatch(d) {
+  document.getElementById('dispRenew').textContent = d.renewable_dispatch_mwh.toFixed(0);
+  document.getElementById('dispPeaker').textContent = d.peaker_dispatch_mwh.toFixed(0);
+  document.getElementById('dispEV').textContent = d.ev_discharge_mwh.toFixed(1);
+  document.getElementById('dispLoss').textContent = d.transmission_loss_mwh.toFixed(1);
+  document.getElementById('dispStorLoss').textContent = d.storage_loss_mwh.toFixed(1);
+  document.getElementById('dispNet').textContent = d.delivered_supply_mwh.toFixed(0);
+  document.getElementById('dispUnmet').textContent = d.unmet_demand_mwh.toFixed(0);
+  const corr = d.corrections || [];
+  document.getElementById('correctionBadge').textContent = corr.length + ' CORR';
+  if (corr.length > 0) {
+    const panel = document.getElementById('powerPanel');
+    panel.classList.add('panel-flash');
+    setTimeout(() => panel.classList.remove('panel-flash'), 500);
+    corr.forEach(c => log(c, 'warn'));
   }
-  document.getElementById('bidTable').innerHTML = html;
+}
+
+function updateRisk(supply, demand, blackoutRisk) {
+  const stress = Math.max(0, (demand - supply) / demand * 100);
+  document.getElementById('gridStress').textContent = stress.toFixed(0) + '%';
+  document.getElementById('gridStress').className = 'gauge-value ' + (stress < 20 ? 'green' : stress < 50 ? 'amber' : 'red');
+  
+  document.getElementById('blackoutRisk').textContent = (blackoutRisk * 100).toFixed(0) + '%';
+  document.getElementById('blackoutRisk').className = 'gauge-value ' + (blackoutRisk < 0.1 ? 'green' : blackoutRisk < 0.3 ? 'amber' : 'red');
+  
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = stress > 50 ? 'CRITICAL' : stress > 20 ? 'ELEVATED' : 'NORMAL';
+  badge.style.background = stress > 50 ? 'var(--red)' : stress > 20 ? 'var(--yellow)' : 'var(--green-dim)';
+}
+
+function drawChart() {
+  const w = cvs.width / dpr, h = cvs.height / dpr;
+  ctx.fillStyle = '#0d1117';
+  ctx.fillRect(0, 0, w, h);
+  if (historyData.length < 2) return;
+  const maxD = Math.max(...historyData.map(x => x.demand), ...historyData.map(x => x.supply), 150) * 1.1;
+  const step = w / Math.max(1, historyData.length - 1);
+  
+  // Demand line
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  historyData.forEach((p, i) => { if (i===0) ctx.moveTo(i*step, h - (p.demand/maxD)*h*0.9); else ctx.lineTo(i*step, h - (p.demand/maxD)*h*0.9); });
+  ctx.stroke();
+  
+  // Supply area
+  ctx.beginPath();
+  ctx.moveTo(0, h);
+  historyData.forEach((p, i) => ctx.lineTo(i*step, h - (p.supply/maxD)*h*0.9));
+  ctx.lineTo(w, h);
+  ctx.fillStyle = 'rgba(34, 197, 94, 0.2)';
+  ctx.fill();
+  ctx.strokeStyle = '#22c55e';
+  ctx.beginPath();
+  historyData.forEach((p, i) => { if (i===0) ctx.moveTo(i*step, h - (p.supply/maxD)*h*0.9); else ctx.lineTo(i*step, h - (p.supply/maxD)*h*0.9); });
+  ctx.stroke();
+  
+  // Price overlay
+  const maxP = Math.max(...historyData.map(x => x.price), 200) * 1.1;
+  ctx.strokeStyle = '#eab308';
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  historyData.forEach((p, i) => { if (i===0) ctx.moveTo(i*step, h - (p.price/maxP)*h*0.9); else ctx.lineTo(i*step, h - (p.price/maxP)*h*0.9); });
+  ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 async function reset() {
-  rewardData.length = supplyData.length = demandData.length = 0;
-  drawChart();
-  
-  const task = document.getElementById('task').value;
+  const task = document.getElementById('taskSel').value;
   const data = await api('/reset', {task_id: task, seed: 42});
   sessionId = data.session_id;
   obsCache = data.observation;
+  historyData.length = 0;
   
-  const cap = obsCache.ev_storage_capacity_mwh;
-  const soc = obsCache.ev_storage_mwh / cap * 100;
-  drawBattery(soc);
-  log('New game: ' + task);
+  document.getElementById('tsMax').textContent = obsCache.max_steps;
+  document.getElementById('scenarioName').textContent = task.toUpperCase();
+  document.getElementById('simStatus').textContent = 'RUNNING';
+  document.getElementById('simStatus').className = 'value green';
+  document.getElementById('eventLog').innerHTML = '';
   
-  updateKPIs({demand: obsCache.demand_mwh, supply: 0, reward: 0});
-  document.getElementById('bidTable').innerHTML = 'Ready...';
+  document.getElementById('threatList').innerHTML = '<div class="threat-item">System Ready</div>';
+  log('Simulation started: ' + task);
+  drawChart();
 }
 
 async function step() {
   if (!sessionId) { await reset(); return; }
   const st = await api('/state?session_id=' + sessionId);
-  if (st.episode_done) { log('Done! Score: ' + document.getElementById('kScore').textContent); pause(); return; }
+  if (st.episode_done) {
+    document.getElementById('simStatus').textContent = 'COMPLETE';
+    document.getElementById('simStatus').className = 'value';
+    log('Episode complete!');
+    pause();
+    return;
+  }
   
   const obs = st.observation;
-  const policy = document.getElementById('policy').value;
+  const pol = document.getElementById('polSel').value;
   const d = obs.demand_mwh, r = obs.renewable_availability_mwh, p = obs.peaker_capacity_mwh;
   const leader = obs.leader_price_signal, scarcity = obs.scarcity_index || 0;
   const storage = obs.ev_storage_mwh, cap = obs.ev_storage_capacity_mwh;
   
-  let renQty, peakQty, peakPrice, evC, evD;
-  if (policy === 'adaptive') {
-    renQty = Math.min(r, d * (0.52 + 0.18 * (1 - scarcity)));
-    peakQty = Math.min(p, (d - renQty) * (1 + 0.25 * scarcity));
-    peakPrice = leader * 1.1;
-    const soc = storage / cap;
-    if (soc <= 0.35) { evC = Math.min(cap * 0.8 - storage, 5); evD = 0; }
-    else if (soc <= 0.5) { evC = scarcity > 0.4 ? 0 : Math.min(cap * 0.8 - storage, 3); evD = scarcity > 0.4 ? Math.min(storage - cap * 0.2, 2 + 4 * scarcity) : 0; }
-    else { evC = 0; evD = scarcity > 0.2 ? Math.min(storage - cap * 0.2, 4 + 5 * scarcity) : 0; }
-  } else if (policy === 'heuristic') {
-    renQty = Math.min(r, d * 0.55); peakQty = Math.min(p, d - renQty); peakPrice = leader * 1.02;
+  const soc = storage / cap;
+  let renQt, peakQt, peakPr, evC, evD;
+  
+  if (pol === 'adaptive') {
+    renQt = Math.min(r, d * (0.52 + 0.18 * (1 - scarcity)));
+    peakQt = Math.min(p, (d - renQt) * (1 + 0.25 * scarcity));
+    peakPr = leader * 1.1;
+    const minS = cap * 0.2, maxS = cap * 0.8;
+    if (soc <= 0.35) { evC = Math.min(maxS - storage, 5); evD = 0; }
+    else if (soc <= 0.5) { evC = scarcity > 0.4 ? 0 : Math.min(maxS - storage, 3); evD = scarcity > 0.4 ? Math.min(storage - minS, 2 + 4 * scarcity) : 0; }
+    else { evC = 0; evD = scarcity > 0.2 ? Math.min(storage - minS, 4 + 5 * scarcity) : 0; }
+    evC = Math.max(0, evC); evD = Math.max(0, evD);
+  } else if (pol === 'heuristic') {
+    renQt = Math.min(r, d * 0.55); peakQt = Math.min(p, d - renQt); peakPr = leader * 1.02;
     evC = r > d ? 3 : 0; evD = r < d * 0.8 ? 2 : 0;
   } else {
-    renQty = Math.min(r, d * 0.5 + Math.random() * 20);
-    peakQty = Math.min(p, d * 0.4);
-    peakPrice = 45 + Math.random() * 20;
+    renQt = Math.min(r, d * 0.5 + Math.random() * 20);
+    peakQt = Math.min(p, d * 0.4);
+    peakPr = 45 + Math.random() * 20;
     evC = Math.random() > 0.6 ? 2 : 0; evD = Math.random() > 0.6 ? 2 : 0;
   }
   
   const action = {action: {bids: [
-    {agent_id:'s', role:'renewable_prosumer', bid_type:'supply', quantity_mwh:Math.max(0, renQty), price_usd_per_mwh:20},
-    {agent_id:'g', role:'peaker_plant', bid_type:'supply', quantity_mwh:Math.max(0, peakQty), price_usd_per_mwh:peakPrice},
-    {agent_id:'f', role:'industrial_load', bid_type:'demand', quantity_mwh:d, price_usd_per_mwh:leader * 1.45}
-  ], ev_charge_mwh: Math.max(0, evC), ev_discharge_mwh: Math.max(0, evD)}};
+    {agent_id:'solar', role:'renewable_prosumer', bid_type:'supply', quantity_mwh:Math.max(0, renQt), price_usd_per_mwh:20},
+    {agent_id:'gas', role:'peaker_plant', bid_type:'supply', quantity_mwh:Math.max(0, peakQt), price_usd_per_mwh:peakPr},
+    {agent_id:'load', role:'industrial_load', bid_type:'demand', quantity_mwh:d, price_usd_per_mwh:leader * 1.45}
+  ], ev_charge_mwh: evC, ev_discharge_mwh: evD}};
   
-  updateBids(action.action);
   const res = await api('/step?session_id=' + sessionId, action);
-  const info = res.info, mkt = info.market, disp = info.dispatch;
+  const info = res.info, disp = info.dispatch, mkt = info.market;
+  const rew = res.reward;
   
-  updateReward(res.reward);
-  updateKPIs({demand: d, supply: disp.delivered_supply_mwh || 0, reward: res.reward.score});
+  document.getElementById('tsCurrent').textContent = res.observation.step;
+  document.getElementById('tsMax').textContent = obs.max_steps;
+  document.getElementById('globalReward').textContent = rew.score.toFixed(2);
   
-  const soc = (disp.next_ev_storage_mwh || 0) / cap * 100;
-  drawBattery(soc);
+  updateSupplyBids(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, peakPr);
+  updateDemandBids(d, leader * 1.45);
+  document.getElementById('clearingPrice').textContent = '$' + Math.round(mkt.clearing_price || 0);
+  document.getElementById('clearingMW').textContent = (mkt.cleared_mwh || 0).toFixed(0) + ' MW @';
   
-  supplyData.push(disp.delivered_supply_mwh || 0);
-  demandData.push(d);
+  updatePowerFlow(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh, disp.delivered_supply_mwh, disp.transmission_loss_mwh);
+  updateDispatch(disp);
+  
+  historyData.push({demand: d, supply: disp.delivered_supply_mwh, price: mkt.clearing_price || 0});
   drawChart();
   
-  const msg = 'Step ' + res.observation.step + ': ' + Math.round(d) + '→' + Math.round(disp.delivered_supply_mwh || 0) + ' MW, score=' + res.reward.score.toFixed(2);
-  if (disp.correction_count > 0) msg += ' ⚠️';
-  log(msg);
+  const blackoutRisk = rew.blackout_penalty || 0;
+  updateRisk(d, d - (disp.delivered_supply_mwh || 0), blackoutRisk);
+  
+  if (obs.shock_active) {
+    document.getElementById('riskPanel').classList.add('panel-red');
+    log('⚡ SHOCK ACTIVE!', 'shock');
+    logThreat('⚡ Renewable dropped ' + info.dynamics?.shock_renewable_drop + ' MW');
+    setTimeout(() => document.getElementById('riskPanel').classList.remove('panel-red'), 1000);
+  }
+  
+  document.getElementById('policyName').textContent = pol.toUpperCase() + ' POLICY';
+  let reason = scarcity > 0.3 ? 'High scarcity detected - Emergency dispatch' : 'Balanced operation';
+  document.getElementById('policyReason').textContent = reason;
+  
+  document.getElementById('sRel').textContent = '+' + rew.demand_satisfaction_score.toFixed(2);
+  document.getElementById('sEcon').textContent = '+' + rew.cost_efficiency_score.toFixed(2);
+  document.getElementById('sGreen').textContent = '+' + rew.renewable_utilization_score.toFixed(2);
+  document.getElementById('sPenal').textContent = '-' + (rew.infeasibility_penalty + rew.blackout_penalty).toFixed(2);
+  document.getElementById('sTotal').textContent = rew.score.toFixed(2);
 }
 
-function play() { pause(); timer = setInterval(step, parseInt(document.getElementById('speed').value)); }
+function play() { pause(); timer = setInterval(step, 400); }
 function pause() { if (timer) clearInterval(timer); timer = null; }
-async function shock() { if (!sessionId) return; await api('/inject-shock', {renewable_drop_mwh:25}); log('⚡ SHOCK!'); }
+async function shock() {
+  if (!sessionId) return;
+  await api('/inject-shock', {renewable_drop_mwh: 25});
+  log('⚡ MANUAL SHOCK INJECTED', 'shock');
+  document.getElementById('shockProb').textContent = 'MANUAL';
+  logThreat('⚡ Manual shock: -25 MW');
+  document.getElementById('riskPanel').classList.add('panel-red');
+  setTimeout(() => document.getElementById('riskPanel').classList.remove('panel-red'), 500);
+}
 
 document.getElementById('resetBtn').onclick = () => { pause(); reset(); };
 document.getElementById('stepBtn').onclick = () => { pause(); step(); };
 document.getElementById('playBtn').onclick = play;
 document.getElementById('pauseBtn').onclick = pause;
 document.getElementById('shockBtn').onclick = shock;
+document.getElementById('baselineBtn').onclick = async () => {
+  document.getElementById('polSel').value = 'heuristic';
+  log('Switched to Heuristic Baseline');
+};
 
-document.getElementById('connStatus').textContent = 'Ready';
 reset();
 </script>
 </body>
