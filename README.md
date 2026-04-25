@@ -23,6 +23,7 @@ Key mechanics:
 - Agent personalities and partially private state views
 - Leader price signal influencing market behavior
 - Physical constraints: capacity, SOC, losses, correction logs
+- Fixed loss model in baseline: 3% transmission + 8% storage loss
 - Long-horizon and stress-shock scenarios
 
 ## 3) Why This Is Novel
@@ -32,6 +33,7 @@ This simulator scores consequences after physical feasibility correction, creati
 
 ## 4) Implemented Features
 
+- Restored baseline simulator flow (market clearing -> LDU correction -> reward -> dynamics)
 - Core simulator, API, packaging, and baseline artifact generation
 - Interactive immersive demo route at `/demo` with:
   - pseudo-3D multi-agent scene
@@ -59,6 +61,7 @@ This simulator scores consequences after physical feasibility correction, creati
 - `POST /inject-shock`
 - `GET /info`
 - `POST /run-inference`
+- `POST /run-demo-mode`
 - `GET /demo`
 
 ## 6) Quickstart
@@ -143,6 +146,7 @@ Test coverage includes:
 - reward bound and consistency checks
 - deterministic seeded regression
 - API contract checks for core endpoints
+- deterministic demo mode regression (`/run-demo-mode`)
 
 Notes:
 - Dashboard prices are shown in INR-equivalent for readability.
@@ -153,3 +157,4 @@ Notes:
 - Keep media external by URL (no large video binaries in repo)
 - Ensure HF Space URL is present and public
 - Freeze final commit before deadline
+- README reflects current restored baseline state after local git restore
