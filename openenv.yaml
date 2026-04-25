@@ -36,6 +36,30 @@ tasks:
       Shock-heavy scenario with renewable collapse and demand volatility.
       Tests emergency adaptation and correction-aware decision quality.
     success_threshold: 0.56
+  - id: normal
+    display_name: Benchmark Normal Operations
+    difficulty: medium
+    max_steps: 24
+    description: >
+      Mild-variability benchmark with no forced shock, emphasizing efficient
+      low-correction dispatch.
+    success_threshold: 0.62
+  - id: outage
+    display_name: Benchmark Outage Contingency
+    difficulty: hard
+    max_steps: 30
+    description: >
+      Outage benchmark with peaker trip contingency and delayed thermal
+      recovery behavior.
+    success_threshold: 0.56
+  - id: renewable_collapse
+    display_name: Benchmark Renewable Collapse
+    difficulty: hard
+    max_steps: 30
+    description: >
+      Severe renewable drop and forecast-error benchmark testing scarcity
+      recovery and reliability adaptation.
+    success_threshold: 0.56
 
 action_space:
   type: object
@@ -53,6 +77,12 @@ action_space:
 observation_space:
   type: object
   fields:
+    step:
+      type: int
+    steps_taken:
+      type: int
+    max_steps:
+      type: int
     demand_mwh:
       type: float
     renewable_availability_mwh:
@@ -61,10 +91,40 @@ observation_space:
       type: float
     ev_storage_mwh:
       type: float
+    ev_storage_capacity_mwh:
+      type: float
     last_clearing_price:
+      type: float
+    leader_price_signal:
+      type: float
+    scarcity_index:
       type: float
     shock_active:
       type: bool
+    forecast_demand_mwh:
+      type: float
+    forecast_renewable_mwh:
+      type: float
+    load_forecast_error_mwh:
+      type: float
+    renewable_forecast_error_mwh:
+      type: float
+    contingency_active:
+      type: bool
+    contingency_type:
+      type: string
+    operator_override_enabled:
+      type: bool
+    public_signal:
+      type: string
+    schema_info:
+      type: string
+    hint:
+      type: string
+      nullable: true
+    error_message:
+      type: string
+      nullable: true
 
 reward:
   type: object
@@ -72,6 +132,8 @@ reward:
     score:
       type: float
       range: [0.0, 1.0]
+    reason:
+      type: string
     demand_satisfaction_score:
       type: float
     cost_efficiency_score:
@@ -79,6 +141,10 @@ reward:
     renewable_utilization_score:
       type: float
     stability_score:
+      type: float
+    reserve_adequacy_score:
+      type: float
+    emissions_intensity_tco2_per_mwh:
       type: float
     infeasibility_penalty:
       type: float
@@ -93,12 +159,16 @@ environment:
     - GET /health
     - POST /reset
     - POST /step
+    - POST /act
     - GET /state
     - GET /events
     - GET /events/stream
     - GET /info
     - POST /inject-shock
+    - POST /operator-override
     - POST /run-inference
+    - POST /run-demo-mode
+    - POST /run-resilience-demo
     - GET /demo
 
 docker:
