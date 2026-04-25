@@ -28,6 +28,7 @@ def build_demo_html() -> str:
     
     /* MAIN GRID */
     .grid { display: grid; grid-template-columns: 1fr 1.2fr 1.1fr 1fr; grid-template-rows: auto auto auto; gap: 2px; padding: 2px; height: calc(100vh - 120px); background: var(--bg); }
+    .power-mix-panel { grid-column: span 2; }
     .panel { background: var(--panel); border: 1px solid var(--border); padding: 10px; overflow: hidden; display: flex; flex-direction: column; }
     .panel-title { font-size: 10px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; flex-shrink: 0; }
     .panel-content { flex: 1; overflow: auto; }
@@ -235,7 +236,7 @@ def build_demo_html() -> str:
           </div>
         </div>
         <div class="clearing-box">
-          <div class="clearing-price" id="clearingPrice">$0</div>
+          <div class="clearing-price" id="clearingPrice">₹0</div>
           <div class="lbl" id="clearingMW">0 MW @</div>
         </div>
       </div>
@@ -254,12 +255,13 @@ def build_demo_html() -> str:
             <text x="25" y="60" class="node-label">MW</text>
           </g>
           
-          <!-- Gas -->
-          <g transform="translate(100, 25)">
-            <rect x="0" y="0" width="50" height="45" rx="4" class="node-gas"/>
-            <text x="25" y="15" class="node-text">🏭 GAS</text>
-            <text x="25" y="32" class="node-text" id="nodePeaker" fill="#eab308" font-size="14">0</text>
-            <text x="25" y="60" class="node-label">MW</text>
+          <!-- Power Plant -->
+          <g transform="translate(90, 25)">
+            <rect x="0" y="0" width="70" height="45" rx="4" class="node-gas"/>
+            <text x="35" y="14" class="node-text" font-size="7">🏭 POWER</text>
+            <text x="35" y="22" class="node-text" font-size="7">PLANT</text>
+            <text x="35" y="34" class="node-text" id="nodePeaker" fill="#eab308" font-size="14">0</text>
+            <text x="35" y="60" class="node-label">MW</text>
           </g>
           
           <!-- EV -->
@@ -287,8 +289,8 @@ def build_demo_html() -> str:
           </g>
           
           <!-- Flow Lines -->
-          <path d="M80,47 L100,47" class="flow-line" stroke="#22c55e"/>
-          <path d="M150,47 L170,80" class="flow-line" stroke="#eab308"/>
+          <path d="M80,47 L90,47" class="flow-line" stroke="#22c55e"/>
+          <path d="M160,47 L170,80" class="flow-line" stroke="#eab308"/>
           <path d="M80,112 L80,90 L170,90" class="flow-line" stroke="#a855f7"/>
           <path d="M225,80 L310,80" class="flow-line" stroke="#3b82f6"/>
           
@@ -296,25 +298,6 @@ def build_demo_html() -> str:
           <text x="240" y="60" class="flow-loss" id="nodeLoss">⚡ Loss: 0 MW</text>
         </svg>
         
-        <!-- Info boxes row -->
-        <div style="display:flex;gap:6px;margin-top:4px">
-          <div class="info-box solar" style="flex:1">
-            <div class="info-val" id="infoRenew" style="color:var(--green);font-size:14px">0</div>
-            <div class="info-label">Solar MW</div>
-          </div>
-          <div class="info-box gas" style="flex:1">
-            <div class="info-val" id="infoGas" style="color:var(--yellow);font-size:14px">0</div>
-            <div class="info-label">Gas MW</div>
-          </div>
-          <div class="info-box ev" style="flex:1">
-            <div class="info-val" id="infoEV" style="color:var(--purple);font-size:14px">0%</div>
-            <div class="info-label">EV SOC</div>
-          </div>
-          <div class="info-box ldu" style="flex:1">
-            <div class="info-val" id="infoNet" style="color:var(--blue);font-size:14px">0</div>
-            <div class="info-label">Net MW</div>
-          </div>
-        </div>
       </div>
     </div>
     
@@ -373,7 +356,7 @@ def build_demo_html() -> str:
     
     <!-- ROW 2 -->
     <!-- MODULE 2: POWER MIX DONUT + MODULE 3: LOAD FORECAST -->
-    <div class="panel">
+    <div class="panel power-mix-panel">
       <div class="panel-title">📊 POWER MIX & FORECAST</div>
       <div class="panel-content" style="display:flex;flex-direction:column">
         <div style="flex:1">
@@ -382,7 +365,7 @@ def build_demo_html() -> str:
             <svg class="donut-chart" viewBox="0 0 100 100">
               <!-- Solar segment -->
               <circle cx="50" cy="50" r="30" fill="none" stroke="#22c55e" stroke-width="15" stroke-dasharray="62 188" stroke-dashoffset="47" opacity="0.8"/>
-              <!-- Gas segment -->
+              <!-- Power Plant segment -->
               <circle cx="50" cy="50" r="30" fill="none" stroke="#eab308" stroke-width="15" stroke-dasharray="50 188" stroke-dashoffset="-15" opacity="0.8"/>
               <!-- Storage segment -->
               <circle cx="50" cy="50" r="30" fill="none" stroke="#a855f7" stroke-width="15" stroke-dasharray="40 188" stroke-dashoffset="-65" opacity="0.8"/>
@@ -393,7 +376,7 @@ def build_demo_html() -> str:
           </div>
           <div class="donut-legend">
             <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar 33%</span></div>
-            <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Gas 27%</span></div>
+            <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Power Plant 27%</span></div>
             <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>Storage 21%</span></div>
             <div class="donut-item"><div class="donut-swatch" style="background:var(--blue)"></div><span>Reserve 19%</span></div>
           </div>
@@ -404,42 +387,6 @@ def build_demo_html() -> str:
           <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
           <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
         </div>
-      </div>
-    </div>
-    
-    <!-- LDU DISPATCH -->
-    <div class="panel">
-      <div class="panel-title">🔧 LDU DISPATCH</div>
-      <div class="panel-content">
-        <div class="dispatch-grid">
-          <div class="disp-card green">
-            <div class="val" id="dSolar">0</div>
-            <div class="lbl">☀️ Solar</div>
-          </div>
-          <div class="disp-card yellow">
-            <div class="val" id="dGas">0</div>
-            <div class="lbl">🏭 Gas</div>
-          </div>
-          <div class="disp-card purple">
-            <div class="val" id="dEV">0</div>
-            <div class="lbl">🔋 EV</div>
-          </div>
-          <div class="disp-card blue">
-            <div class="val" id="dNet">0</div>
-            <div class="lbl">⚡ NET</div>
-          </div>
-        </div>
-        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          <div class="disp-card">
-            <div class="val yellow" id="dLoss">0</div>
-            <div class="lbl">📉 Loss</div>
-          </div>
-          <div class="disp-card">
-            <div class="val red" id="dUnmet">0</div>
-            <div class="lbl">⚠️ Unmet</div>
-          </div>
-        </div>
-        <div class="events" id="eventLog" style="margin-top:6px;max-height:80px"></div>
       </div>
     </div>
     
@@ -484,20 +431,20 @@ def build_demo_html() -> str:
         <div class="orderbook">
           <div class="ob-section">
             <div class="ob-header">BID DEPTH</div>
-            <div class="ob-row"><span>$75</span><span style="color:var(--red)">-450 MW</span></div>
-            <div class="ob-row"><span>$70</span><span style="color:var(--red)">-320 MW</span></div>
-            <div class="ob-row"><span>$65</span><span style="color:var(--red)">-200 MW</span></div>
+            <div class="ob-row"><span>₹7,500</span><span style="color:var(--red)">-450 MW</span></div>
+            <div class="ob-row"><span>₹7,000</span><span style="color:var(--red)">-320 MW</span></div>
+            <div class="ob-row"><span>₹6,500</span><span style="color:var(--red)">-200 MW</span></div>
           </div>
           <div class="ob-section">
             <div class="ob-header">ASK DEPTH</div>
-            <div class="ob-row"><span>$55</span><span style="color:var(--green)">+180 MW</span></div>
-            <div class="ob-row"><span>$50</span><span style="color:var(--green)">+220 MW</span></div>
-            <div class="ob-row"><span>$45</span><span style="color:var(--green)">+340 MW</span></div>
+            <div class="ob-row"><span>₹5,500</span><span style="color:var(--green)">+180 MW</span></div>
+            <div class="ob-row"><span>₹5,000</span><span style="color:var(--green)">+220 MW</span></div>
+            <div class="ob-row"><span>₹4,500</span><span style="color:var(--green)">+340 MW</span></div>
           </div>
         </div>
         <div class="ob-spread">
           <div style="font-size:8px;color:var(--dim)">Spread</div>
-          <div style="font-weight:bold;color:var(--cyan)">$5/MWh</div>
+          <div style="font-weight:bold;color:var(--cyan)">₹500/MWh</div>
           <div style="font-size:8px;color:var(--dim);margin-top:2px">Liquidity: Excellent</div>
         </div>
       </div>
@@ -626,6 +573,11 @@ def build_demo_html() -> str:
 const API = '';
 let sessionId = null, timer = null;
 const historyData = [];
+const INR_PER_USD = 100;
+
+function toInr(priceUsd) {
+  return Math.round(priceUsd * INR_PER_USD);
+}
 
 const cvs = document.getElementById('historyChart');
 const ctx = cvs.getContext('2d');
@@ -641,9 +593,9 @@ window.addEventListener('resize', resize);
 resize();
 
 function log(msg, type='') {
-  const el = document.getElementById('eventLog');
-  el.insertBefore(Object.assign(document.createElement('div'), {className: 'event ' + type, innerHTML: `T${document.getElementById('kStep').textContent.split('/')[0]}: ${msg}`}), el.firstChild);
-  while (el.children.length > 20) el.lastChild.remove();
+  const step = document.getElementById('kStep').textContent.split('/')[0] || '0';
+  const priority = type === 'shock' || type === 'error' ? 'critical' : type === 'warn' ? 'warning' : 'info';
+  addTimelineEvent(step, msg, priority);
 }
 
 async function api(path, body) {
@@ -655,12 +607,15 @@ async function api(path, body) {
 }
 
 function updateBidLadder(renew, peak, demand) {
+  const solarBidUsd = 20;
+  const peakBidUsd = 55;
+  const demandBidUsd = 85;
   document.getElementById('supplyBids').innerHTML = `
-    <div class="bid-row solar"><span>Solar</span><span>${Math.round(renew)}@$20</span></div>
-    <div class="bid-row peaker"><span>Gas</span><span>${Math.round(peak)}@$55</span></div>
+    <div class="bid-row solar"><span>Solar</span><span>${Math.round(renew)}@₹${toInr(solarBidUsd).toLocaleString('en-IN')}/MWh</span></div>
+    <div class="bid-row peaker"><span>Power Plant</span><span>${Math.round(peak)}@₹${toInr(peakBidUsd).toLocaleString('en-IN')}/MWh</span></div>
   `;
   document.getElementById('demandBids').innerHTML = `
-    <div class="bid-row demand"><span>Factory</span><span>${Math.round(demand)}@$85</span></div>
+    <div class="bid-row demand"><span>Factory</span><span>${Math.round(demand)}@₹${toInr(demandBidUsd).toLocaleString('en-IN')}/MWh</span></div>
   `;
 }
 
@@ -673,20 +628,9 @@ function updatePowerFlow(renew, peak, ev, delivered, loss) {
   document.getElementById('nodeLoad').textContent = Math.round(delivered);
   document.getElementById('nodeLoss').textContent = '⚡ Loss: ' + loss.toFixed(1) + ' MW';
   
-  // Info boxes
-  document.getElementById('infoRenew').textContent = Math.round(renew);
-  document.getElementById('infoGas').textContent = Math.round(peak);
-  document.getElementById('infoEV').textContent = ev > 0 ? Math.round(ev) + '⚡' : '0';
-  document.getElementById('infoNet').textContent = Math.round(delivered);
 }
 
 function updateDispatch(d) {
-  document.getElementById('dSolar').textContent = d.renewable_dispatch_mwh.toFixed(0);
-  document.getElementById('dGas').textContent = d.peaker_dispatch_mwh.toFixed(0);
-  document.getElementById('dEV').textContent = d.ev_discharge_mwh.toFixed(1);
-  document.getElementById('dLoss').textContent = d.transmission_loss_mwh.toFixed(1);
-  document.getElementById('dNet').textContent = d.delivered_supply_mwh.toFixed(0);
-  document.getElementById('dUnmet').textContent = d.unmet_demand_mwh.toFixed(0);
   if (d.corrections && d.corrections.length > 0) {
     d.corrections.forEach(c => log(c, 'warn'));
   }
@@ -764,7 +708,7 @@ function updatePowerMix(renew, peak, ev, reserve) {
   if (total === 0) return;
   
   const solarPct = (renew / total * 100).toFixed(0);
-  const gasPct = (peak / total * 100).toFixed(0);
+  const plantPct = (peak / total * 100).toFixed(0);
   const storagePct = (Math.max(0, ev) / total * 100).toFixed(0);
   const reservePct = (reserve / total * 100).toFixed(0);
   
@@ -773,7 +717,7 @@ function updatePowerMix(renew, peak, ev, reserve) {
   if (legend) {
     legend.innerHTML = `
       <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar ${solarPct}%</span></div>
-      <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Gas ${gasPct}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Power Plant ${plantPct}%</span></div>
       <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>Storage ${storagePct}%</span></div>
       <div class="donut-item"><div class="donut-swatch" style="background:var(--blue)"></div><span>Reserve ${reservePct}%</span></div>
     `;
@@ -899,7 +843,6 @@ async function reset() {
   historyData.length = 0;
   document.getElementById('kScenario').textContent = task.toUpperCase();
   document.getElementById('kStatus').innerHTML = '<span class="live-dot"></span> RUNNING';
-  document.getElementById('eventLog').innerHTML = '';
   const timeline = document.getElementById('eventTimeline');
   if (timeline) timeline.innerHTML = '<div class="timeline-item info"><div class="timeline-time">T0</div><div class="timeline-event">Simulation started: ' + task + '</div></div>';
   log('Simulation started: ' + task);
@@ -954,7 +897,7 @@ async function step() {
   document.getElementById('kReward').textContent = res.reward.score.toFixed(2);
   
   updateBidLadder(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, d);
-  document.getElementById('clearingPrice').textContent = '$' + Math.round(mkt.clearing_price || 0);
+  document.getElementById('clearingPrice').textContent = '₹' + toInr(mkt.clearing_price || 0).toLocaleString('en-IN');
   document.getElementById('clearingMW').textContent = (mkt.cleared_mwh || 0).toFixed(0) + ' MW';
   
   updatePowerFlow(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh, disp.delivered_supply_mwh, disp.transmission_loss_mwh);
