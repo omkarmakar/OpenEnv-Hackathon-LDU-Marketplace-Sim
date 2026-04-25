@@ -9,8 +9,8 @@ def compute_reward(dispatch: dict, clearing_price: float, demand_mwh: float, pri
 
     demand_satisfaction = min(1.0, delivered / max(demand_mwh, 1e-6))
 
-    unit_cost = clearing_price if clearing_price > 0 else 45.0
-    total_cost = delivered * unit_cost
+    unit_cost = min(abs(clearing_price), 200.0) if clearing_price > 0 else 45.0
+    total_cost = min(delivered * unit_cost, 15000.0)
     cost_efficiency = max(0.0, 1.0 - total_cost / 12000.0)
 
     renewable_utilization = min(1.0, dispatch["renewable_dispatch_mwh"] / max(delivered, 1e-6))

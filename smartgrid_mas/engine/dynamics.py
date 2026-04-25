@@ -26,8 +26,9 @@ def evolve_grid(
     next_demand = max(20.0, next_demand)
     next_renewable = max(0.0, next_renewable)
 
-    implied_price = base_price_usd_per_mwh * (1.0 + max(0.0, (next_demand - next_renewable) / 300.0))
-    next_price = max(5.0, implied_price)
+    scarcity_ratio = max(0.0, (next_demand - next_renewable) / 300.0)
+    implied_price = base_price_usd_per_mwh * (1.0 + scarcity_ratio)
+    next_price = min(200.0, max(5.0, implied_price))
 
     return (
         round(next_demand, 3),
