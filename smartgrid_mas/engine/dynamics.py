@@ -1,7 +1,21 @@
 import random
+import math
 from typing import Dict, Tuple
 
 from smartgrid_mas.tasks import TaskConfig
+
+
+def _daily_profile(step: int, max_steps: int) -> Tuple[float, float]:
+    phase = (step % max_steps) / max_steps
+
+    morning_peak = math.exp(-((phase - 0.33) / 0.10) ** 2)
+    evening_peak = math.exp(-((phase - 0.75) / 0.12) ** 2)
+    demand_multiplier = 0.90 + 0.18 * morning_peak + 0.35 * evening_peak
+
+    midday_solar = math.exp(-((phase - 0.50) / 0.18) ** 2)
+    renewable_multiplier = max(0.05, 0.15 + 1.15 * midday_solar)
+
+    return demand_multiplier, renewable_multiplier
 
 
 def evolve_grid(
@@ -16,9 +30,10 @@ def evolve_grid(
 
     demand_noise = rng.gauss(0.0, task.demand_volatility)
     renewable_noise = rng.gauss(0.0, task.renewable_volatility)
+    demand_multiplier, renewable_multiplier = _daily_profile(step=step, max_steps=task.max_steps)
 
-    next_demand = demand_mwh + task.demand_trend_mwh + demand_noise
-    next_renewable = renewable_mwh + task.renewable_trend_mwh + renewable_noise
+    next_demand = demand_mwh * demand_multiplier + task.demand_trend_mwh + demand_noise
+    next_renewable = renewable_mwh * renewable_multiplier + task.renewable_trend_mwh + renewable_noise
 
     if shock_active:
         next_renewable = max(0.0, next_renewable - task.shock_renewable_drop)
@@ -38,5 +53,7 @@ def evolve_grid(
             "shock_active": shock_active,
             "demand_noise": round(demand_noise, 3),
             "renewable_noise": round(renewable_noise, 3),
+            "demand_multiplier": round(demand_multiplier, 4),
+            "renewable_multiplier": round(renewable_multiplier, 4),
         },
     )

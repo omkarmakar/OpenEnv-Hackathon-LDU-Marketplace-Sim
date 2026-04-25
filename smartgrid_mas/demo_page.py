@@ -28,7 +28,7 @@ def build_demo_html() -> str:
     
     /* MAIN GRID */
     .grid { display: grid; grid-template-columns: 1fr 1.2fr 1.1fr 1fr; grid-template-rows: auto auto auto; gap: 2px; padding: 2px; height: calc(100vh - 120px); background: var(--bg); }
-    .power-mix-panel { grid-column: span 2; }
+    .rl-panel { grid-column: span 2; }
     .panel { background: var(--panel); border: 1px solid var(--border); padding: 10px; overflow: hidden; display: flex; flex-direction: column; }
     .panel-title { font-size: 10px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; flex-shrink: 0; }
     .panel-content { flex: 1; overflow: auto; }
@@ -64,7 +64,8 @@ def build_demo_html() -> str:
     .node-label { fill: var(--dim); font-size: 8px; text-anchor: middle; }
     .flow-line { stroke: var(--green); stroke-width: 3; stroke-dasharray: 8,4; animation: dash 1s linear infinite; opacity: 0.7; }
     @keyframes dash { to { stroke-dashoffset: -12; } }
-    .flow-loss { fill: var(--red); font-size: 9px; }
+    .flow-loss-label { fill: var(--dim); font-size: 8px; text-anchor: middle; }
+    .flow-loss-value { fill: var(--red); font-size: 10px; font-weight: bold; text-anchor: middle; }
     .batt-bar { fill: var(--purple); }
     .batt-bg { fill: var(--border); }
     
@@ -104,6 +105,9 @@ def build_demo_html() -> str:
     
     /* CHARTS */
     .chart-box { width: 100%; height: 100%; background: var(--bg); border-radius: 4px; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 8px; color: var(--dim); margin-bottom: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-line { width: 14px; height: 2px; border-radius: 2px; }
     
     /* GAUGES */
     .gauge-row { display: flex; gap: 10px; margin-bottom: 10px; }
@@ -295,7 +299,11 @@ def build_demo_html() -> str:
           <path d="M225,80 L310,80" class="flow-line" stroke="#3b82f6"/>
           
           <!-- Loss -->
-          <text x="240" y="60" class="flow-loss" id="nodeLoss">⚡ Loss: 0 MW</text>
+          <g transform="translate(242, 52)">
+            <rect x="-38" y="-12" width="76" height="26" rx="4" fill="#161d25" stroke="var(--border)" stroke-width="1"/>
+            <text x="0" y="-2" class="flow-loss-label">Transmission Loss</text>
+            <text x="0" y="9" class="flow-loss-value" id="nodeLoss">0.0 MW (0.0%)</text>
+          </g>
         </svg>
         
       </div>
@@ -356,7 +364,7 @@ def build_demo_html() -> str:
     
     <!-- ROW 2 -->
     <!-- MODULE 2: POWER MIX DONUT + MODULE 3: LOAD FORECAST -->
-    <div class="panel power-mix-panel">
+    <div class="panel">
       <div class="panel-title">📊 POWER MIX & FORECAST</div>
       <div class="panel-content" style="display:flex;flex-direction:column">
         <div style="flex:1">
@@ -387,6 +395,20 @@ def build_demo_html() -> str:
           <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
           <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
         </div>
+      </div>
+    </div>
+
+    <!-- MODULE 11: GRID STABILITY ANALYTICS -->
+    <div class="panel">
+      <div class="panel-title">📈 GRID STABILITY ANALYTICS</div>
+      <div class="panel-content">
+        <div class="chart-legend">
+          <div class="legend-item"><span class="legend-line" style="background:#f97316"></span><span>Demand (Expected)</span></div>
+          <div class="legend-item"><span class="legend-line" style="background:#22c55e"></span><span>Solar (Expected)</span></div>
+          <div class="legend-item"><span class="legend-line" style="background:#38bdf8"></span><span>Demand (Actual)</span></div>
+          <div class="legend-item"><span class="legend-line" style="background:#a855f7"></span><span>Solar (Actual)</span></div>
+        </div>
+        <canvas id="historyChart" class="chart-box"></canvas>
       </div>
     </div>
     
@@ -495,7 +517,7 @@ def build_demo_html() -> str:
     </div>
     
     <!-- RL DECISION ENHANCED WITH POLICY CONFIDENCE + CORRECTION SAVINGS -->
-    <div class="panel">
+    <div class="panel rl-panel">
       <div class="panel-title">🧠 RL DECISION ENGINE</div>
       <div class="panel-content" style="display:flex;flex-direction:column">
         <div style="flex:0">
@@ -541,13 +563,6 @@ def build_demo_html() -> str:
       </div>
     </div>
     
-    <!-- STABILITY ANALYTICS -->
-    <div class="panel">
-      <div class="panel-title">📈 STABILITY ANALYTICS</div>
-      <div class="panel-content">
-        <canvas id="historyChart" class="chart-box"></canvas>
-      </div>
-    </div>
   </div>
   
   <!-- CONTROLS -->
@@ -573,10 +588,44 @@ def build_demo_html() -> str:
 const API = '';
 let sessionId = null, timer = null;
 const historyData = [];
+let dayCurveData = [];
 const INR_PER_USD = 100;
+
+const TASK_CURVE_CONFIG = {
+  default: { max_steps: 24, initial_demand_mwh: 120.0, initial_renewable_mwh: 70.0, demand_trend_mwh: 1.2, renewable_trend_mwh: -0.6 },
+  long_horizon: { max_steps: 48, initial_demand_mwh: 135.0, initial_renewable_mwh: 78.0, demand_trend_mwh: 1.5, renewable_trend_mwh: -0.8 },
+  stress_shock: { max_steps: 30, initial_demand_mwh: 150.0, initial_renewable_mwh: 85.0, demand_trend_mwh: 2.0, renewable_trend_mwh: -1.0 }
+};
 
 function toInr(priceUsd) {
   return Math.round(priceUsd * INR_PER_USD);
+}
+
+function dailyProfile(step, maxSteps) {
+  const phase = (step % maxSteps) / maxSteps;
+  const morningPeak = Math.exp(-Math.pow((phase - 0.33) / 0.10, 2));
+  const eveningPeak = Math.exp(-Math.pow((phase - 0.75) / 0.12, 2));
+  const demandMultiplier = 0.90 + 0.18 * morningPeak + 0.35 * eveningPeak;
+
+  const middaySolar = Math.exp(-Math.pow((phase - 0.50) / 0.18, 2));
+  const renewableMultiplier = Math.max(0.05, 0.15 + 1.15 * middaySolar);
+  return { demandMultiplier, renewableMultiplier };
+}
+
+function buildDayCurve(taskId) {
+  const cfg = TASK_CURVE_CONFIG[taskId] || TASK_CURVE_CONFIG.default;
+  let demand = cfg.initial_demand_mwh;
+  let renewable = cfg.initial_renewable_mwh;
+  const points = [];
+
+  for (let step = 0; step < cfg.max_steps; step += 1) {
+    points.push({ demand, renewable });
+    const { demandMultiplier, renewableMultiplier } = dailyProfile(step, cfg.max_steps);
+    demand = Math.max(20.0, demand * demandMultiplier + cfg.demand_trend_mwh);
+    renewable = Math.max(0.0, renewable * renewableMultiplier + cfg.renewable_trend_mwh);
+  }
+
+  return points;
 }
 
 const cvs = document.getElementById('historyChart');
@@ -588,6 +637,7 @@ function resize() {
   cvs.width = r.width * dpr; cvs.height = r.height * dpr;
   cvs.style.width = r.width + 'px'; cvs.style.height = r.height + 'px';
   ctx.scale(dpr, dpr);
+  drawChart();
 }
 window.addEventListener('resize', resize);
 resize();
@@ -626,7 +676,11 @@ function updatePowerFlow(renew, peak, ev, delivered, loss) {
   document.getElementById('nodeEV').textContent = ev > 0 ? Math.round(ev) + '⚡' : '0';
   document.getElementById('nodeLDU').textContent = Math.round(delivered);
   document.getElementById('nodeLoad').textContent = Math.round(delivered);
-  document.getElementById('nodeLoss').textContent = '⚡ Loss: ' + loss.toFixed(1) + ' MW';
+  const grossFlow = Math.max(1e-6, renew + peak + Math.max(0, ev));
+  const lossPct = (loss / grossFlow) * 100;
+  const lossEl = document.getElementById('nodeLoss');
+  lossEl.textContent = `${loss.toFixed(1)} MW (${lossPct.toFixed(1)}%)`;
+  lossEl.style.fill = lossPct < 3.5 ? 'var(--yellow)' : 'var(--red)';
   
 }
 
@@ -814,26 +868,90 @@ function drawChart() {
   const w = cvs.width / dpr, h = cvs.height / dpr;
   ctx.fillStyle = '#0a0e12';
   ctx.fillRect(0, 0, w, h);
-  if (historyData.length < 2) return;
-  
-  const max = Math.max(...historyData.map(x => x.demand), ...historyData.map(x => x.supply), 150) * 1.1;
-  const step = w / Math.max(1, historyData.length - 1);
-  
-  ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 1.5;
+  if (!dayCurveData || dayCurveData.length < 2) return;
+
+  const padL = 26, padR = 8, padT = 8, padB = 18;
+  const cw = Math.max(1, w - padL - padR);
+  const ch = Math.max(1, h - padT - padB);
+
+  const maxExpected = Math.max(
+    ...dayCurveData.map(p => p.demand),
+    ...dayCurveData.map(p => p.renewable),
+    150
+  );
+  const maxActual = historyData.length > 0
+    ? Math.max(...historyData.map(p => p.demand), ...historyData.map(p => p.renewable), 0)
+    : 0;
+  const yMax = Math.max(maxExpected, maxActual) * 1.1;
+  const totalSteps = dayCurveData.length;
+
+  const xAt = i => padL + (i / Math.max(1, totalSteps - 1)) * cw;
+  const yAt = v => padT + (1 - (v / Math.max(1, yMax))) * ch;
+
+  ctx.strokeStyle = 'rgba(100,116,139,0.35)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i += 1) {
+    const y = padT + (i / 4) * ch;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(w - padR, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#f97316';
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  historyData.forEach((d, i) => { if (i===0) ctx.moveTo(i*step, h - (d.demand/max)*h*0.9); else ctx.lineTo(i*step, h - (d.demand/max)*h*0.9); });
+  dayCurveData.forEach((p, i) => {
+    const x = xAt(i), y = yAt(p.demand);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
   ctx.stroke();
-  
-  ctx.fillStyle = 'rgba(34,197,94,0.2)';
+
+  ctx.strokeStyle = '#22c55e';
+  ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.moveTo(0, h);
-  historyData.forEach((d, i) => ctx.lineTo(i*step, h - (d.supply/max)*h*0.9));
-  ctx.lineTo(w, h);
-  ctx.fill();
-  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  historyData.forEach((d, i) => { if (i===0) ctx.moveTo(i*step, h - (d.supply/max)*h*0.9); else ctx.lineTo(i*step, h - (d.supply/max)*h*0.9); });
+  dayCurveData.forEach((p, i) => {
+    const x = xAt(i), y = yAt(p.renewable);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
   ctx.stroke();
+
+  if (historyData.length >= 2) {
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    historyData.forEach((p, i) => {
+      const x = xAt(i), y = yAt(p.demand);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    historyData.forEach((p, i) => {
+      const x = xAt(i), y = yAt(p.renewable);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  const currentStep = Math.max(0, Math.min(totalSteps - 1, historyData.length - 1));
+  const markerX = xAt(currentStep);
+  ctx.strokeStyle = 'rgba(59,130,246,0.7)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(markerX, padT);
+  ctx.lineTo(markerX, h - padB);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9px Courier New';
+  ctx.fillText('T0', padL - 4, h - 4);
+  ctx.fillText('T' + (totalSteps - 1), w - padR - 22, h - 4);
+  ctx.fillText(Math.round(yMax) + ' MW', 2, padT + 7);
 }
 
 async function reset() {
@@ -841,6 +959,8 @@ async function reset() {
   const data = await api('/reset', {task_id: task, seed: 42});
   sessionId = data.session_id;
   historyData.length = 0;
+  dayCurveData = buildDayCurve(task);
+  drawChart();
   document.getElementById('kScenario').textContent = task.toUpperCase();
   document.getElementById('kStatus').innerHTML = '<span class="live-dot"></span> RUNNING';
   const timeline = document.getElementById('eventTimeline');
@@ -903,7 +1023,7 @@ async function step() {
   updatePowerFlow(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh, disp.delivered_supply_mwh, disp.transmission_loss_mwh);
   updateDispatch(disp);
   
-  historyData.push({demand: d, supply: disp.delivered_supply_mwh});
+  historyData.push({demand: d, renewable: r, supply: disp.delivered_supply_mwh});
   drawChart();
   
   updateRisk(disp.delivered_supply_mwh, d);
