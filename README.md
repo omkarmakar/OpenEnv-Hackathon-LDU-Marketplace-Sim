@@ -91,13 +91,17 @@ Open:
 Run baseline evaluation matrix:
 
 ```powershell
-python -m smartgrid_mas.train_baseline --episodes 12 --seeds 3 --outdir artifacts
+python -m smartgrid_mas.train_baseline --episodes 12 --seeds 10 --bootstrap-samples 1000 --outdir artifacts
 ```
 
 Generated outputs:
 - `artifacts/baseline_metrics.csv` (detailed rows)
 - `artifacts/policy_comparison.csv` (aggregated metrics with mean/std)
 - `artifacts/policy_comparison.md` (judge-readable table)
+- `artifacts/policy_pairwise_deltas.csv` (paired deltas + bootstrap 95% CI)
+- `artifacts/policy_win_rates.md` (scenario-wise win-rate table)
+- `artifacts/ablation_metrics.csv` (adaptive policy under LDU ablation profiles)
+- `artifacts/ablation_comparison.md` (full-vs-ablated summary table)
 - `artifacts/resilience_stress_benchmark.md` (protocol + findings)
 - `artifacts/reward_comparison.png` (reward curves)
 

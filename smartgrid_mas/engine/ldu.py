@@ -25,6 +25,9 @@ def enforce_dispatch(
     peaker_emission_factor_tco2_per_mwh: float = 0.0,
     transmission_loss_multiplier: float = 1.0,
     carbon_price_usd_per_tco2: float = 0.0,
+    enable_reserve_logic: bool = True,
+    enable_ramp_limits: bool = True,
+    enable_startup_emissions: bool = True,
 ) -> Tuple[Dict, float]:
     corrections = []
     requested_ev_charge = ev_charge_mwh
@@ -51,7 +54,7 @@ def enforce_dispatch(
     peaker_dispatch = min(peaker_capacity_mwh, residual)
 
     ramp_violation = 0.0
-    peaker_ramp = max(0.0, peaker_ramp_limit_mwh)
+    peaker_ramp = max(0.0, peaker_ramp_limit_mwh) if enable_ramp_limits else 1e9
     peaker_delta = peaker_dispatch - previous_peaker_dispatch_mwh
     if abs(peaker_delta) > peaker_ramp:
         peaker_dispatch = previous_peaker_dispatch_mwh + (peaker_ramp if peaker_delta > 0 else -peaker_ramp)
@@ -59,7 +62,7 @@ def enforce_dispatch(
         ramp_violation += abs(peaker_delta) - peaker_ramp
         corrections.append("Peaker ramp-rate limit applied")
 
-    ev_ramp = max(0.0, ev_ramp_limit_mwh)
+    ev_ramp = max(0.0, ev_ramp_limit_mwh) if enable_ramp_limits else 1e9
     ev_delta = ev_discharge_mwh - previous_ev_discharge_mwh
     if abs(ev_delta) > ev_ramp:
         ev_discharge_mwh = previous_ev_discharge_mwh + (ev_ramp if ev_delta > 0 else -ev_ramp)
@@ -90,16 +93,22 @@ def enforce_dispatch(
     unmet_demand = max(0.0, demand_mwh - delivered_supply)
     oversupply = max(0.0, delivered_supply - demand_mwh)
 
-    reserve_requirement = max(0.0, demand_mwh * max(0.0, reserve_margin_ratio))
+    reserve_requirement = max(0.0, demand_mwh * max(0.0, reserve_margin_ratio)) if enable_reserve_logic else 0.0
     spinning_reserve = max(0.0, peaker_capacity_mwh - peaker_dispatch) + max(0.0, max_discharge - ev_discharge_mwh)
-    reserve_shortfall = max(0.0, reserve_requirement - spinning_reserve)
-    reserve_commitment_active = spinning_reserve < reserve_requirement * max(1.0, reserve_commitment_threshold_ratio)
-    reserve_commitment_penalty = max(
-        0.0, (reserve_requirement * max(1.0, reserve_commitment_threshold_ratio)) - spinning_reserve
+    reserve_shortfall = max(0.0, reserve_requirement - spinning_reserve) if enable_reserve_logic else 0.0
+    reserve_commitment_active = (
+        spinning_reserve < reserve_requirement * max(1.0, reserve_commitment_threshold_ratio)
+        if enable_reserve_logic
+        else False
     )
-    if reserve_shortfall > 0.0:
+    reserve_commitment_penalty = (
+        max(0.0, (reserve_requirement * max(1.0, reserve_commitment_threshold_ratio)) - spinning_reserve)
+        if enable_reserve_logic
+        else 0.0
+    )
+    if enable_reserve_logic and reserve_shortfall > 0.0:
         corrections.append("Reserve margin shortfall")
-    if reserve_commitment_active:
+    if enable_reserve_logic and reserve_commitment_active:
         corrections.append("Reserve commitment gate activated")
 
     reserve_ratio = reserve_shortfall / max(reserve_requirement, 1.0)
@@ -135,8 +144,12 @@ def enforce_dispatch(
     next_ev_storage = max(0.0, min(ev_storage_capacity_mwh, next_ev_storage))
     curtailed_renewable = max(0.0, renewable_surplus - total_ev_charge)
     peaker_online = peaker_dispatch > 0.0
-    startup_cost = peaker_startup_cost_usd if (peaker_online and not previous_peaker_online) else 0.0
-    emissions_tco2 = peaker_dispatch * max(0.0, peaker_emission_factor_tco2_per_mwh)
+    startup_cost = (
+        peaker_startup_cost_usd if (enable_startup_emissions and peaker_online and not previous_peaker_online) else 0.0
+    )
+    emissions_tco2 = (
+        peaker_dispatch * max(0.0, peaker_emission_factor_tco2_per_mwh) if enable_startup_emissions else 0.0
+    )
     emissions_cost_usd = emissions_tco2 * max(0.0, carbon_price_usd_per_tco2)
     stability_risk_index = _clamp01(
         0.35 * (unmet_demand / max(demand_mwh, 1.0))

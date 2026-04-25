@@ -33,6 +33,9 @@ class TaskConfig:
     contingency_step: int
     contingency_derate_pct: float
     hint: str
+    enable_reserve_logic: bool = True
+    enable_ramp_limits: bool = True
+    enable_startup_emissions: bool = True
 
 
 TASKS: Dict[str, TaskConfig] = {

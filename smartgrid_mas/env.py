@@ -210,6 +210,9 @@ class SmartGridMarketEnv:
             peaker_emission_factor_tco2_per_mwh=session.task.peaker_emission_factor_tco2_per_mwh,
             transmission_loss_multiplier=session.contingency_loss_multiplier,
             carbon_price_usd_per_tco2=session.task.carbon_price_usd_per_tco2,
+            enable_reserve_logic=session.task.enable_reserve_logic,
+            enable_ramp_limits=session.task.enable_ramp_limits,
+            enable_startup_emissions=session.task.enable_startup_emissions,
         )
 
         reward = compute_reward(

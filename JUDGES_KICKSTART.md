@@ -58,9 +58,14 @@ Architecture phrase set:
 - Present:
   - `artifacts/policy_comparison.csv`
   - `artifacts/policy_comparison.md`
+  - `artifacts/policy_pairwise_deltas.csv`
+  - `artifacts/policy_win_rates.md`
+  - `artifacts/ablation_metrics.csv`
+  - `artifacts/ablation_comparison.md`
   - `artifacts/resilience_stress_benchmark.md`
   - `artifacts/reward_comparison.png`
 - Mention metrics: cost, blackout rate, constraint violations, emissions, reward, reserve shortfall rate, stability event rate.
+  - Mention paired confidence intervals and win-rate evidence for policy comparisons.
   - Mention benchmark scenarios: `normal`, `shock`, `outage`, `renewable_collapse` (`shock` maps to task `stress_shock`).
 
 ## API Calls You Can Run Live
@@ -109,6 +114,6 @@ curl -X POST http://localhost:7860/run-resilience-demo -H "Content-Type: applica
 
 ```bash
 pytest -q
-python -m smartgrid_mas.train_baseline --episodes 12 --seeds 3 --outdir artifacts
+python -m smartgrid_mas.train_baseline --episodes 12 --seeds 10 --bootstrap-samples 1000 --outdir artifacts
 ```
 
