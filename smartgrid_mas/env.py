@@ -3,6 +3,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
+from smartgrid_mas.engine.policies import (
+    adaptive_stackelberg_action,
+    heuristic_joint_action,
+    random_joint_action,
+)
 from smartgrid_mas.engine.dynamics import evolve_grid
 from smartgrid_mas.engine.ldu import enforce_dispatch
 from smartgrid_mas.engine.market import clear_market
@@ -215,6 +220,20 @@ class SmartGridMarketEnv:
             truncated=False,
             info=info,
         )
+
+    def policy_action(
+        self,
+        policy: str = "adaptive",
+        personality: str = "balanced",
+        session_id: Optional[str] = None,
+    ) -> JointAction:
+        session = self._get_session(session_id)
+        obs = session.to_observation()
+        if policy == "random":
+            return random_joint_action(obs, session.rng)
+        if policy == "heuristic":
+            return heuristic_joint_action(obs, personality=personality)
+        return adaptive_stackelberg_action(obs, personality=personality)
 
     def state(self, session_id: Optional[str] = None) -> StateResponse:
         session = self._get_session(session_id)

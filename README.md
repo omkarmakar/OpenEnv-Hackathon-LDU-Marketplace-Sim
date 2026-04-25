@@ -52,6 +52,7 @@ This simulator scores consequences after physical feasibility correction, creati
 - `GET /health`
 - `POST /reset`
 - `POST /step`
+- `POST /act`
 - `GET /state`
 - `GET /events`
 - `GET /events/stream`
@@ -142,6 +143,10 @@ Test coverage includes:
 - reward bound and consistency checks
 - deterministic seeded regression
 - API contract checks for core endpoints
+
+Notes:
+- Dashboard prices are shown in INR-equivalent for readability.
+- Internal market fields remain model units (`*_usd_per_mwh`) for API compatibility.
 
 ## 12) Submission Notes
 

@@ -40,9 +40,10 @@ Grid balancing is **two-layer**: Market optimality ≠ Physical feasibility. Mos
                │ dispatch
                ▼
 ┌─ Reward ───────────────────────────────────────┐
-│ 0.34×satisfaction + 0.23×cost + ...            │
-│ - 0.2×infeasibility - 0.2×blackout            │
-│ → Score: 0.68                                  │
+│ Composite score: reliability + economics +     │
+│ clean-energy share + stability + loss handling │
+│ minus blackout/correction/oversupply penalties │
+│ → Score: 0.00 to 1.00                          │
 └──────────────┬──────────────────────────────────┘
                │ MarketReward
                ▼
@@ -72,17 +73,15 @@ Adaptive        50          0.628         Learns scarcity
 Demand: 120 MWh
 Delivered: 115 MWh (3% transmission loss)
 Unmet: 5 MWh
-Clearing Price: $52/MW
+Clearing Price: model units (dashboard shows INR-equivalent)
 Corrections: 1 (simultaneous charge+discharge)
 
 Score Calculation:
-  Satisfaction:  115/120 = 0.958 × 0.34 = 0.326
-  Cost Eff.:     1 - (115×52/12000) = 0.499 × 0.23 = 0.115
-  Renewables:    0.60 × 0.18 = 0.108
-  Stability:     0.95 × 0.15 = 0.142
-  Penalties:     -0.2×0.15 - 0.2×0.04 = -0.038
-  ────────────────────────────────────────
-  Raw Score:     0.653 → Clamped to [0,1] = 0.653
+  Demand satisfaction, cost efficiency, renewable utilization,
+  clean-flex share, stability, and loss efficiency contribute positively.
+  Blackout, infeasibility, oversupply, and curtailment penalize score.
+  Recovery from prior gap is rewarded.
+  Final score is clamped to [0, 1].
 ```
 
 ---

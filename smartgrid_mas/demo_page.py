@@ -20,6 +20,11 @@ def build_demo_html() -> str:
     .logo { font-size: 20px; font-weight: bold; }
     .logo span { color: var(--green); }
     .kpi-bar { display: flex; gap: 12px; }
+    .kpi-wide { flex: 1.2; }
+    .kpi-compact { font-size: 8px; }
+    .meter-compact { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; font-size: 8px; }
+    .meter-compact-item { text-align: center; padding: 4px; background: var(--bg); border-radius: 3px; }
+    .kpi-compact { font-size: 8px; }
     .kpi { background: var(--panel); padding: 8px 14px; border-radius: 4px; border: 1px solid var(--border); }
     .kpi .lbl { font-size: 9px; color: var(--dim); }
     .kpi .val { font-size: 16px; font-weight: bold; }
@@ -215,12 +220,13 @@ def build_demo_html() -> str:
   <!-- TOP BAR -->
   <div class="topbar">
     <div class="logo">⚡ <span>GRID OPS</span> COMMAND CENTER</div>
-    <div class="kpi-bar">
-      <div class="kpi"><div class="lbl">Timestep</div><div class="val" id="kStep">0/0</div></div>
-      <div class="kpi"><div class="lbl">Scenario</div><div class="val" id="kScenario">-</div></div>
-      <div class="kpi"><div class="lbl">Status</div><div class="val" id="kStatus"><span class="live-dot"></span></div></div>
-      <div class="kpi"><div class="lbl">Reward</div><div class="val green" id="kReward">0.00</div></div>
-    </div>
+<div class="kpi-bar">
+        <div class="kpi"><div class="lbl">Timestep</div><div class="val" id="kStep">0/0</div></div>
+        <div class="kpi"><div class="lbl">Scenario</div><div class="val" id="kScenario">-</div></div>
+        <div class="kpi"><div class="lbl">Status</div><div class="val" id="kStatus"><span class="live-dot"></span></div></div>
+        <div class="kpi-wide"><div class="lbl">Reward (Current)</div><div class="val green" id="kReward">0.00%</div></div>
+        <div class="kpi-wide"><div class="lbl">Avg Reward</div><div class="val cyan" id="kAvgReward">0.00%</div></div>
+      </div>
   </div>
   
   <!-- MAIN GRID - 4 COL x 3 ROW ENHANCED LAYOUT -->
@@ -243,6 +249,7 @@ def build_demo_html() -> str:
         <div class="clearing-box">
           <div class="clearing-price" id="clearingPrice">₹0</div>
           <div class="lbl" id="clearingMW">0 MW @</div>
+          <div class="lbl" style="margin-top:4px">INR display (internal clearing uses model units)</div>
         </div>
       </div>
     </div>
@@ -388,7 +395,7 @@ def build_demo_html() -> str:
           </div>
         </div>
         <div style="flex:1;margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
-          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Load Forecast</div>
+          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Load Forecast (Synthetic)</div>
           <div class="forecast-stat"><span>Forecast</span><span style="color:var(--cyan)">185 MW</span></div>
           <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
           <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
@@ -446,21 +453,21 @@ def build_demo_html() -> str:
         <div class="orderbook">
           <div class="ob-section">
             <div class="ob-header">BID DEPTH</div>
-            <div class="ob-row"><span>₹7,500</span><span style="color:var(--red)">-450 MW</span></div>
-            <div class="ob-row"><span>₹7,000</span><span style="color:var(--red)">-320 MW</span></div>
-            <div class="ob-row"><span>₹6,500</span><span style="color:var(--red)">-200 MW</span></div>
+            <div id="bidDepthRows">
+              <div class="ob-row"><span>₹0</span><span style="color:var(--red)">-0 MW</span></div>
+            </div>
           </div>
           <div class="ob-section">
             <div class="ob-header">ASK DEPTH</div>
-            <div class="ob-row"><span>₹5,500</span><span style="color:var(--green)">+180 MW</span></div>
-            <div class="ob-row"><span>₹5,000</span><span style="color:var(--green)">+220 MW</span></div>
-            <div class="ob-row"><span>₹4,500</span><span style="color:var(--green)">+340 MW</span></div>
+            <div id="askDepthRows">
+              <div class="ob-row"><span>₹0</span><span style="color:var(--green)">+0 MW</span></div>
+            </div>
           </div>
         </div>
         <div class="ob-spread">
           <div style="font-size:8px;color:var(--dim)">Spread</div>
-          <div style="font-weight:bold;color:var(--cyan)">₹500/MWh</div>
-          <div style="font-size:8px;color:var(--dim);margin-top:2px">Liquidity: Excellent</div>
+          <div style="font-weight:bold;color:var(--cyan)" id="spreadVal">₹0/MWh</div>
+          <div style="font-size:8px;color:var(--dim);margin-top:2px" id="liquidityVal">Liquidity: -</div>
         </div>
       </div>
     </div>
@@ -506,6 +513,7 @@ def build_demo_html() -> str:
             </div>
           </div>
         </div>
+        <div id="threatList" style="margin-top:8px"></div>
       </div>
     </div>
     
@@ -519,6 +527,14 @@ def build_demo_html() -> str:
             <div class="policy-reason" id="policyReason">Analyzing grid state...</div>
           </div>
           <div class="score-breakdown" id="scoreBreakdown" style="font-size:8px"></div>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+            <div style="font-size:8px;color:var(--dim);margin-bottom:4px">Session Performance</div>
+            <div class="meter-compact">
+              <div class="meter-compact-item"><div style="color:var(--cyan)" id="sessionSteps">0</div><div style="font-size:7px;color:var(--dim)">Steps</div></div>
+              <div class="meter-compact-item"><div style="color:var(--green)" id="sessionAvg">0%</div><div style="font-size:7px;color:var(--dim)">Avg Score</div></div>
+              <div class="meter-compact-item"><div style="color:var(--yellow)" id="sessionBest">-</div><div style="font-size:7px;color:var(--dim)">Best Pol</div></div>
+            </div>
+          </div>
         </div>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;flex:1">
           <div style="font-size:9px;color:var(--dim);margin-bottom:6px">Policy Confidence</div>
@@ -533,7 +549,7 @@ def build_demo_html() -> str:
             </div>
           </div>
           <div style="background:var(--bg);padding:6px;border-radius:4px;margin-top:6px;font-size:8px;color:var(--dim);text-align:center">
-            Mode: <span style="color:var(--yellow);font-weight:bold">Defensive</span>
+            Mode: <span id="riskMode" style="color:var(--yellow);font-weight:bold">Defensive</span>
           </div>
         </div>
         <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;flex:1">
@@ -582,7 +598,7 @@ const API = '';
 let sessionId = null, timer = null;
 const historyData = [];
 let dayCurveData = [];
-const runtimeStats = { steps: 0, correctionSteps: 0, zeroUnmetSteps: 0, recoveryEvents: 0, prevUnmet: 0 };
+const runtimeStats = { steps: 0, correctionSteps: 0, zeroUnmetSteps: 0, recoveryEvents: 0, prevUnmet: 0, cumulativeReward: 0 };
 const INR_PER_USD = 100;
 
 const TASK_CURVE_CONFIG = {
@@ -661,6 +677,43 @@ function updateBidLadder(renew, peak, demand) {
   document.getElementById('demandBids').innerHTML = `
     <div class="bid-row demand"><span>Factory</span><span>${Math.round(demand)}@₹${toInr(demandBidUsd).toLocaleString('en-IN')}/MWh</span></div>
   `;
+}
+
+function updateMarketMicrostructure(market) {
+  const book = market && market.post_signal_book ? market.post_signal_book : [];
+  const bidRowsEl = document.getElementById('bidDepthRows');
+  const askRowsEl = document.getElementById('askDepthRows');
+  const spreadEl = document.getElementById('spreadVal');
+  const liqEl = document.getElementById('liquidityVal');
+  if (!bidRowsEl || !askRowsEl || !spreadEl || !liqEl) return;
+
+  const bids = book
+    .filter(b => b.bid_type === 'demand')
+    .sort((a, b) => b.price_usd_per_mwh - a.price_usd_per_mwh)
+    .slice(0, 3);
+  const asks = book
+    .filter(b => b.bid_type === 'supply')
+    .sort((a, b) => a.price_usd_per_mwh - b.price_usd_per_mwh)
+    .slice(0, 3);
+
+  bidRowsEl.innerHTML = bids.length
+    ? bids.map(b => `<div class="ob-row"><span>₹${toInr(b.price_usd_per_mwh).toLocaleString('en-IN')}</span><span style="color:var(--red)">-${Math.round(Math.max(0, b.quantity_mwh))} MW</span></div>`).join('')
+    : '<div class="ob-row"><span>₹0</span><span style="color:var(--red)">-0 MW</span></div>';
+
+  askRowsEl.innerHTML = asks.length
+    ? asks.map(b => `<div class="ob-row"><span>₹${toInr(b.price_usd_per_mwh).toLocaleString('en-IN')}</span><span style="color:var(--green)">+${Math.round(Math.max(0, b.quantity_mwh))} MW</span></div>`).join('')
+    : '<div class="ob-row"><span>₹0</span><span style="color:var(--green)">+0 MW</span></div>';
+
+  const bestBid = bids.length ? bids[0].price_usd_per_mwh : 0;
+  const bestAsk = asks.length ? asks[0].price_usd_per_mwh : 0;
+  const spread = Math.max(0, bestBid - bestAsk);
+  spreadEl.textContent = `₹${toInr(spread).toLocaleString('en-IN')}/MWh`;
+
+  const supply = market.total_supply_offered || 0;
+  const demand = market.total_demand_bid || 0;
+  const depthRatio = supply / Math.max(1e-6, demand);
+  const liquidity = depthRatio > 1.05 ? 'Excellent' : depthRatio > 0.9 ? 'Moderate' : 'Tight';
+  liqEl.textContent = `Liquidity: ${liquidity}`;
 }
 
 function updatePowerFlow(renew, peak, evCharge, evDischarge, evStorage, evCapacity, delivered, loss) {
@@ -799,7 +852,7 @@ function updateForecast(demand, forecast) {
   const error = Math.abs(demand - forecast) / forecast * 100;
   const forecastEls = document.querySelectorAll('.forecast-stat');
   if (forecastEls.length >= 3) {
-    forecastEls[0].innerHTML = `<span>Forecast</span><span style="color:var(--cyan)">${Math.round(forecast)} MW</span>`;
+    forecastEls[0].innerHTML = `<span>Forecast (Synthetic)</span><span style="color:var(--cyan)">${Math.round(forecast)} MW</span>`;
     forecastEls[1].innerHTML = `<span>Actual</span><span style="color:var(--green)">${Math.round(demand)} MW</span>`;
     forecastEls[2].innerHTML = `<span>Error</span><span style="color:${error > 5 ? 'var(--red)' : 'var(--yellow)'}">${error > 5 ? '+' : ''}${error.toFixed(1)}%</span>`;
   }
@@ -857,10 +910,11 @@ function updatePolicyConfidence(reward, dispatch, scarcity) {
   document.getElementById('confidenceVal').textContent = Math.round(confidence) + '%';
   document.getElementById('explorationVal').textContent = Math.round(exploration) + '%';
   
-  const riskEl = document.querySelector('[style*="Mode: "]');
+  const riskEl = document.getElementById('riskMode');
   if (riskEl) {
     const color = riskPosture === 'Defensive' ? 'var(--red)' : riskPosture === 'Balanced' ? 'var(--yellow)' : 'var(--green)';
-    riskEl.innerHTML = `Mode: <span style="color:${color};font-weight:bold">${riskPosture}</span>`;
+    riskEl.style.color = color;
+    riskEl.textContent = riskPosture;
   }
 }
 
@@ -985,17 +1039,20 @@ async function reset() {
   const data = await api('/reset', {task_id: task, seed: 42});
   sessionId = data.session_id;
   historyData.length = 0;
-  runtimeStats.steps = 0;
+runtimeStats.steps = 0;
   runtimeStats.correctionSteps = 0;
   runtimeStats.zeroUnmetSteps = 0;
   runtimeStats.recoveryEvents = 0;
   runtimeStats.prevUnmet = 0;
+  runtimeStats.cumulativeReward = 0;
   dayCurveData = buildDayCurve(task);
   drawChart();
   document.getElementById('kScenario').textContent = task.toUpperCase();
   document.getElementById('kStatus').innerHTML = '<span class="live-dot"></span> RUNNING';
   const timeline = document.getElementById('eventTimeline');
   if (timeline) timeline.innerHTML = '<div class="timeline-item info"><div class="timeline-time">T0</div><div class="timeline-event">Simulation started: ' + task + '</div></div>';
+  const threatList = document.getElementById('threatList');
+  if (threatList) threatList.innerHTML = '';
   log('Simulation started: ' + task);
 }
 
@@ -1010,66 +1067,45 @@ async function step() {
   const obs = st.observation;
   const pol = document.getElementById('polSel').value;
   const d = obs.demand_mwh, r = obs.renewable_availability_mwh, p = obs.peaker_capacity_mwh;
-  const leader = obs.leader_price_signal, scarcity = obs.scarcity_index || 0;
-  const storage = obs.ev_storage_mwh, cap = obs.ev_storage_capacity_mwh;
-  
-  const soc = storage / cap;
-  let renQt, peakQt, peakPr, evC, evD;
-  
-  if (pol === 'adaptive') {
-    renQt = Math.min(r, d * (0.58 + 0.20 * (1 - scarcity)));
-    const peakerNeed = Math.max(0, d - renQt);
-    peakQt = Math.min(p, peakerNeed * (1 + 0.18 * scarcity));
-    peakPr = Math.max(40, leader * (1.08 + 0.08 * scarcity));
-    const minS = cap * 0.2, maxS = cap * 0.8;
-    if (soc <= 0.35) {
-      evC = Math.min(maxS - storage, 5);
-      evD = 0;
-    } else if (scarcity > 0.45 && soc > 0.25) {
-      evD = Math.min(storage - minS, 2.5 + 5.5 * scarcity);
-      evC = 0;
-    } else if (r > d * 0.9 && soc < 0.75) {
-      evC = Math.min(maxS - storage, 4.5);
-      evD = 0;
-    } else if (scarcity < 0.15 && soc < 0.55) {
-      evC = Math.min(maxS - storage, 2.5);
-      evD = 0;
-    } else if (scarcity > 0.25 && soc > 0.55) {
-      evD = Math.min(storage - minS, 2.0 + 3.5 * scarcity);
-      evC = 0;
-    } else {
-      evC = 0;
-      evD = 0;
-    }
-    if (soc >= 0.79) evC = 0;
-    if (soc <= 0.21) evD = 0;
-    evC = Math.max(0, evC); evD = Math.max(0, evD);
-  } else if (pol === 'heuristic') {
-    renQt = Math.min(r, d * 0.55); peakQt = Math.min(p, d - renQt); peakPr = leader * 1.02;
-    evC = r > d ? 3 : 0; evD = r < d * 0.8 ? 2 : 0;
-  } else {
-    renQt = Math.min(r, d * 0.5 + Math.random() * 20);
-    peakQt = Math.min(p, d * 0.4);
-    peakPr = 45 + Math.random() * 20;
-    evC = Math.random() > 0.6 ? 2 : 0; evD = Math.random() > 0.6 ? 2 : 0;
-  }
-  
-  const action = {action: {bids: [
-    {agent_id:'solar', role:'renewable_prosumer', bid_type:'supply', quantity_mwh:Math.max(0, renQt), price_usd_per_mwh:20},
-    {agent_id:'gas', role:'peaker_plant', bid_type:'supply', quantity_mwh:Math.max(0, peakQt), price_usd_per_mwh:peakPr},
-    {agent_id:'load', role:'industrial_load', bid_type:'demand', quantity_mwh:d, price_usd_per_mwh:leader * 1.45}
-  ], ev_charge_mwh: evC, ev_discharge_mwh: evD}};
-  
+  const scarcity = obs.scarcity_index || 0;
+  const actionResp = await api('/act?session_id=' + sessionId, {policy: pol, personality: 'balanced'});
+  const action = {action: actionResp.action};
+
   const res = await api('/step?session_id=' + sessionId, action);
   const info = res.info, disp = info.dispatch, mkt = info.market;
   
-  document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_steps;
+document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_steps;
   const rewardPct = res.reward.score * 100;
+  runtimeStats.cumulativeReward += res.reward.score;
+  const avgRewardPct = (runtimeStats.cumulativeReward / runtimeStats.steps) * 100;
+  
   const kRewardEl = document.getElementById('kReward');
   kRewardEl.textContent = rewardPct.toFixed(1) + '%';
   kRewardEl.style.color = rewardPct >= 75 ? 'var(--green)' : rewardPct >= 45 ? 'var(--yellow)' : 'var(--red)';
   
+  const kAvgEl = document.getElementById('kAvgReward');
+  if (kAvgEl) {
+    kAvgEl.textContent = avgRewardPct.toFixed(1) + '%';
+    kAvgEl.style.color = avgRewardPct >= 75 ? 'var(--green)' : avgRewardPct >= 45 ? 'var(--yellow)' : 'var(--red)';
+  }
+  
+  // Update session performance display
+  const sessionStepsEl = document.getElementById('sessionSteps');
+  const sessionAvgEl = document.getElementById('sessionAvg');
+  const sessionBestEl = document.getElementById('sessionBest');
+  if (sessionStepsEl) sessionStepsEl.textContent = runtimeStats.steps;
+  if (sessionAvgEl) {
+    sessionAvgEl.textContent = avgRewardPct.toFixed(0) + '%';
+    sessionAvgEl.style.color = avgRewardPct >= 75 ? 'var(--green)' : avgRewardPct >= 45 ? 'var(--yellow)' : 'var(--red)';
+  }
+  if (sessionBestEl) {
+    const currentPol = pol;
+    const polBench = currentPol === 'adaptive' ? '44%' : currentPol === 'heuristic' ? '30%' : '21%';
+    sessionBestEl.textContent = polBench;
+  }
+  
   updateBidLadder(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, d);
+  updateMarketMicrostructure(mkt);
   document.getElementById('clearingPrice').textContent = '₹' + toInr(mkt.clearing_price || 0).toLocaleString('en-IN');
   document.getElementById('clearingMW').textContent = (mkt.cleared_mwh || 0).toFixed(0) + ' MW';
   
@@ -1123,7 +1159,8 @@ async function step() {
   
   if (obs.shock_active) {
     log('⚡ SHOCK!', 'shock');
-    document.getElementById('threatList').innerHTML = '<div class="threat">⚡ Renewable drop detected!</div>';
+    const threatList = document.getElementById('threatList');
+    if (threatList) threatList.innerHTML = '<div class="threat">⚡ Renewable drop detected!</div>';
   }
 }
 
@@ -1133,7 +1170,8 @@ async function shock() {
   if (!sessionId) return;
   await api('/inject-shock', {renewable_drop_mwh: 25});
   log('⚡ MANUAL SHOCK', 'shock');
-  document.getElementById('threatList').innerHTML = '<div class="threat">⚡ Manual shock: -25 MW</div>';
+  const threatList = document.getElementById('threatList');
+  if (threatList) threatList.innerHTML = '<div class="threat">⚡ Manual shock: -25 MW</div>';
 }
 
 document.getElementById('resetBtn').onclick = () => { pause(); reset(); };

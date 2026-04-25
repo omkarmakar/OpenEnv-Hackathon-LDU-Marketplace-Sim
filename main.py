@@ -52,6 +52,11 @@ class ShockRequest(BaseModel):
     renewable_drop_mwh: float = 20.0
 
 
+class PolicyActionRequest(BaseModel):
+    policy: str = "adaptive"
+    personality: str = "balanced"
+
+
 def _rollout_inference(request: InferenceRequest) -> dict:
     reset_resp = env.reset(task_id=request.task_id, seed=request.seed)
     sid = reset_resp.session_id
@@ -129,6 +134,15 @@ def step(request: StepRequest, session_id: Optional[str] = Query(default=None)):
 def state(session_id: Optional[str] = Query(default=None)):
     try:
         return env.state(session_id=session_id)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/act")
+def act(request: PolicyActionRequest, session_id: Optional[str] = Query(default=None)):
+    try:
+        action = env.policy_action(policy=request.policy, personality=request.personality, session_id=session_id)
+        return {"action": action.model_dump()}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
