@@ -27,9 +27,10 @@ def build_demo_html() -> str:
     @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
     
     /* MAIN GRID */
-    .grid { display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2px; height: calc(100vh - 120px); background: var(--bg); }
-    .panel { background: var(--panel); border: 1px solid var(--border); padding: 10px; overflow: hidden; }
-    .panel-title { font-size: 10px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .grid { display: grid; grid-template-columns: 1fr 1.2fr 1.1fr 1fr; grid-template-rows: auto auto auto; gap: 2px; padding: 2px; height: calc(100vh - 120px); background: var(--bg); }
+    .panel { background: var(--panel); border: 1px solid var(--border); padding: 10px; overflow: hidden; display: flex; flex-direction: column; }
+    .panel-title { font-size: 10px; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; flex-shrink: 0; }
+    .panel-content { flex: 1; overflow: auto; }
     
     /* CONTROLS */
     .controls { background: var(--panel); padding: 10px 20px; display: flex; gap: 10px; border-top: 1px solid var(--border); align-items: center; }
@@ -123,6 +124,85 @@ def build_demo_html() -> str:
     .score-pos { color: var(--green); }
     .score-neg { color: var(--red); }
     .score-total { border-top: 1px solid var(--border); padding-top: 6px; font-size: 14px; font-weight: bold; }
+    
+    /* FREQUENCY/VOLTAGE HEALTH */
+    .health-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .health-card { background: var(--bg); padding: 8px; border-radius: 4px; text-align: center; }
+    .health-val { font-size: 16px; font-weight: bold; }
+    .health-lbl { font-size: 8px; color: var(--dim); margin-top: 2px; }
+    .health-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; margin: 4px 0; }
+    .health-bar-fill { height: 100%; border-radius: 2px; }
+    
+    /* POWER MIX DONUT */
+    .donut-container { width: 100%; height: 120px; display: flex; justify-content: center; align-items: center; }
+    .donut-chart { width: 100px; height: 100px; }
+    .donut-legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 9px; margin-top: 8px; }
+    .donut-item { display: flex; gap: 4px; align-items: center; }
+    .donut-swatch { width: 8px; height: 8px; border-radius: 2px; }
+    
+    /* FORECAST VS ACTUAL */
+    .forecast-chart { width: 100%; height: 100%; background: var(--bg); border-radius: 4px; }
+    .forecast-stat { display: flex; justify-content: space-between; font-size: 9px; margin: 4px 0; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    
+    /* CONGESTION HEATMAP */
+    .heatmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .heatmap-cell { background: var(--bg); padding: 8px; border-radius: 4px; text-align: center; border-left: 3px solid var(--border); }
+    .heatmap-cell.green { border-color: var(--green); }
+    .heatmap-cell.yellow { border-color: var(--yellow); }
+    .heatmap-cell.red { border-color: var(--red); }
+    .heatmap-val { font-size: 14px; font-weight: bold; }
+    .heatmap-lbl { font-size: 8px; color: var(--dim); }
+    
+    /* MARKET MICROSTRUCTURE */
+    .orderbook { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 9px; }
+    .ob-section { background: var(--bg); padding: 6px; border-radius: 3px; }
+    .ob-header { color: var(--dim); font-size: 8px; margin-bottom: 4px; font-weight: bold; }
+    .ob-row { display: flex; justify-content: space-between; padding: 2px 0; }
+    .ob-spread { background: rgba(163,230,53,0.1); padding: 4px; border-radius: 2px; margin-top: 4px; text-align: center; }
+    
+    /* POLICY CONFIDENCE METER */
+    .policy-meter { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+    .meter-item { background: var(--bg); padding: 8px; border-radius: 4px; text-align: center; }
+    .meter-val { font-size: 14px; font-weight: bold; }
+    .meter-lbl { font-size: 8px; color: var(--dim); margin-top: 2px; }
+    
+    /* CORRECTION SAVINGS */
+    .savings-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+    .saving-item { background: var(--bg); padding: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .saving-icon { font-size: 16px; }
+    .saving-val { font-size: 14px; font-weight: bold; color: var(--green); }
+    
+    /* WHAT-IF COUNTERFACTUAL */
+    .whatif-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .whatif-box { background: var(--bg); padding: 10px; border-radius: 4px; text-align: center; }
+    .whatif-label { font-size: 9px; color: var(--dim); margin-bottom: 6px; }
+    .whatif-val { font-size: 20px; font-weight: bold; }
+    
+    /* EVENT TIMELINE */
+    .timeline { display: flex; flex-direction: column; gap: 4px; max-height: 100%; overflow-y: auto; }
+    .timeline-item { background: var(--bg); padding: 6px 8px; border-radius: 3px; border-left: 3px solid var(--border); font-size: 9px; display: flex; gap: 6px; }
+    .timeline-time { color: var(--cyan); font-weight: bold; min-width: 30px; }
+    .timeline-event { color: var(--dim); flex: 1; }
+    .timeline-item.critical { border-color: var(--red); }
+    .timeline-item.warning { border-color: var(--yellow); }
+    .timeline-item.info { border-color: var(--blue); }
+    
+    /* RESILIENCE SCOREBOARD */
+    .resilience-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .resilience-card { background: var(--bg); padding: 10px; border-radius: 4px; text-align: center; border-top: 2px solid var(--border); }
+    .resilience-val { font-size: 22px; font-weight: bold; }
+    .resilience-lbl { font-size: 8px; color: var(--dim); margin-top: 4px; }
+    
+    /* GRID PULSE ANIMATION */
+    @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+    .pulse-indicator { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 1.5s infinite; display: inline-block; margin-right: 4px; }
+    
+    /* ALARM PRIORITY QUEUE */
+    .alarm-queue { display: flex; flex-direction: column; gap: 4px; }
+    .alarm { padding: 6px 8px; border-radius: 3px; border-left: 3px solid var(--border); font-size: 9px; }
+    .alarm.p1 { background: rgba(239,68,68,0.15); border-color: var(--red); color: var(--red); font-weight: bold; }
+    .alarm.p2 { background: rgba(234,179,8,0.15); border-color: var(--yellow); color: var(--yellow); }
+    .alarm.p3 { background: rgba(59,130,246,0.15); border-color: var(--blue); color: var(--blue); }
   </style>
 </head>
 <body>
@@ -137,160 +217,389 @@ def build_demo_html() -> str:
     </div>
   </div>
   
-  <!-- MAIN GRID -->
+  <!-- MAIN GRID - 4 COL x 3 ROW ENHANCED LAYOUT -->
   <div class="grid">
-    <!-- MARKET -->
+    <!-- ROW 1 -->
+    <!-- MARKET INTELLIGENCE -->
     <div class="panel">
       <div class="panel-title">💰 MARKET INTELLIGENCE</div>
-      <div class="bid-ladder">
-        <div class="ladder-col">
-          <div class="ladder-head">SUPPLY</div>
-          <div id="supplyBids"></div>
+      <div class="panel-content">
+        <div class="bid-ladder">
+          <div class="ladder-col">
+            <div class="ladder-head">SUPPLY</div>
+            <div id="supplyBids"></div>
+          </div>
+          <div class="ladder-col">
+            <div class="ladder-head">DEMAND</div>
+            <div id="demandBids"></div>
+          </div>
         </div>
-        <div class="ladder-col">
-          <div class="ladder-head">DEMAND</div>
-          <div id="demandBids"></div>
+        <div class="clearing-box">
+          <div class="clearing-price" id="clearingPrice">$0</div>
+          <div class="lbl" id="clearingMW">0 MW @</div>
         </div>
-      </div>
-      <div class="clearing-box">
-        <div class="clearing-price" id="clearingPrice">$0</div>
-        <div class="lbl" id="clearingMW">0 MW @</div>
       </div>
     </div>
     
-    <!-- POWER FLOW -->
+    <!-- POWER FLOW DIGITAL TWIN -->
     <div class="panel">
       <div class="panel-title">⚡ POWER FLOW DIGITAL TWIN</div>
-      <svg class="power-svg" viewBox="0 0 380 140">
-        <!-- Solar -->
-        <g transform="translate(30, 25)">
-          <rect x="0" y="0" width="50" height="45" rx="4" class="node-solar"/>
-          <text x="25" y="15" class="node-text">☀️ SOLAR</text>
-          <text x="25" y="32" class="node-text" id="nodeRenew" fill="#22c55e" font-size="14">0</text>
-          <text x="25" y="60" class="node-label">MW</text>
-        </g>
+      <div class="panel-content">
+        <svg class="power-svg" viewBox="0 0 380 140" style="height:120px">
+          <!-- Solar -->
+          <g transform="translate(30, 25)">
+            <rect x="0" y="0" width="50" height="45" rx="4" class="node-solar"/>
+            <text x="25" y="15" class="node-text">☀️ SOLAR</text>
+            <text x="25" y="32" class="node-text" id="nodeRenew" fill="#22c55e" font-size="14">0</text>
+            <text x="25" y="60" class="node-label">MW</text>
+          </g>
+          
+          <!-- Gas -->
+          <g transform="translate(100, 25)">
+            <rect x="0" y="0" width="50" height="45" rx="4" class="node-gas"/>
+            <text x="25" y="15" class="node-text">🏭 GAS</text>
+            <text x="25" y="32" class="node-text" id="nodePeaker" fill="#eab308" font-size="14">0</text>
+            <text x="25" y="60" class="node-label">MW</text>
+          </g>
+          
+          <!-- EV -->
+          <g transform="translate(30, 90)">
+            <rect x="0" y="0" width="50" height="45" rx="4" class="node-ev"/>
+            <text x="25" y="15" class="node-text">🔋 EV</text>
+            <text x="25" y="32" class="node-text" id="nodeEV" fill="#a855f7" font-size="14">0%</text>
+            <text x="25" y="60" class="node-label">BATTERY</text>
+          </g>
+          
+          <!-- LDU -->
+          <g transform="translate(170, 55)">
+            <rect x="0" y="0" width="55" height="50" rx="4" class="node-ldu"/>
+            <text x="27" y="15" class="node-text">⚡ LDU</text>
+            <text x="27" y="35" class="node-text" id="nodeLDU" fill="#3b82f6" font-size="16">0</text>
+            <text x="27" y="65" class="node-label">NET MW</text>
+          </g>
+          
+          <!-- Load -->
+          <g transform="translate(310, 55)">
+            <rect x="0" y="0" width="55" height="50" rx="4" class="node-load"/>
+            <text x="27" y="15" class="node-text">🏭 LOAD</text>
+            <text x="27" y="35" class="node-text" id="nodeLoad" fill="#ef4444" font-size="16">0</text>
+            <text x="27" y="65" class="node-label">MW DEMAND</text>
+          </g>
+          
+          <!-- Flow Lines -->
+          <path d="M80,47 L100,47" class="flow-line" stroke="#22c55e"/>
+          <path d="M150,47 L170,80" class="flow-line" stroke="#eab308"/>
+          <path d="M80,112 L80,90 L170,90" class="flow-line" stroke="#a855f7"/>
+          <path d="M225,80 L310,80" class="flow-line" stroke="#3b82f6"/>
+          
+          <!-- Loss -->
+          <text x="240" y="60" class="flow-loss" id="nodeLoss">⚡ Loss: 0 MW</text>
+        </svg>
         
-        <!-- Gas -->
-        <g transform="translate(100, 25)">
-          <rect x="0" y="0" width="50" height="45" rx="4" class="node-gas"/>
-          <text x="25" y="15" class="node-text">🏭 GAS</text>
-          <text x="25" y="32" class="node-text" id="nodePeaker" fill="#eab308" font-size="14">0</text>
-          <text x="25" y="60" class="node-label">MW</text>
-        </g>
-        
-        <!-- EV -->
-        <g transform="translate(30, 90)">
-          <rect x="0" y="0" width="50" height="45" rx="4" class="node-ev"/>
-          <text x="25" y="15" class="node-text">🔋 EV</text>
-          <text x="25" y="32" class="node-text" id="nodeEV" fill="#a855f7" font-size="14">0%</text>
-          <text x="25" y="60" class="node-label">BATTERY</text>
-        </g>
-        
-        <!-- LDU -->
-        <g transform="translate(170, 55)">
-          <rect x="0" y="0" width="55" height="50" rx="4" class="node-ldu"/>
-          <text x="27" y="15" class="node-text">⚡ LDU</text>
-          <text x="27" y="35" class="node-text" id="nodeLDU" fill="#3b82f6" font-size="16">0</text>
-          <text x="27" y="65" class="node-label">NET MW</text>
-        </g>
-        
-        <!-- Load -->
-        <g transform="translate(310, 55)">
-          <rect x="0" y="0" width="55" height="50" rx="4" class="node-load"/>
-          <text x="27" y="15" class="node-text">🏭 LOAD</text>
-          <text x="27" y="35" class="node-text" id="nodeLoad" fill="#ef4444" font-size="16">0</text>
-          <text x="27" y="65" class="node-label">MW DEMAND</text>
-        </g>
-        
-        <!-- Flow Lines -->
-        <path d="M80,47 L100,47" class="flow-line" stroke="#22c55e"/>
-        <path d="M150,47 L170,80" class="flow-line" stroke="#eab308"/>
-        <path d="M80,112 L80,90 L170,90" class="flow-line" stroke="#a855f7"/>
-        <path d="M225,80 L310,80" class="flow-line" stroke="#3b82f6"/>
-        
-        <!-- Loss -->
-        <text x="240" y="60" class="flow-loss" id="nodeLoss">⚡ Loss: 0 MW</text>
-      </svg>
-      
-      <!-- Info boxes row -->
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <div class="info-box solar" style="flex:1">
-          <div class="info-val" id="infoRenew" style="color:var(--green)">0</div>
-          <div class="info-label">Solar MW</div>
-        </div>
-        <div class="info-box gas" style="flex:1">
-          <div class="info-val" id="infoGas" style="color:var(--yellow)">0</div>
-          <div class="info-label">Gas MW</div>
-        </div>
-        <div class="info-box ev" style="flex:1">
-          <div class="info-val" id="infoEV" style="color:var(--purple)">0%</div>
-          <div class="info-label">EV SOC</div>
-        </div>
-        <div class="info-box ldu" style="flex:1">
-          <div class="info-val" id="infoNet" style="color:var(--blue)">0</div>
-          <div class="info-label">Net MW</div>
+        <!-- Info boxes row -->
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <div class="info-box solar" style="flex:1">
+            <div class="info-val" id="infoRenew" style="color:var(--green);font-size:14px">0</div>
+            <div class="info-label">Solar MW</div>
+          </div>
+          <div class="info-box gas" style="flex:1">
+            <div class="info-val" id="infoGas" style="color:var(--yellow);font-size:14px">0</div>
+            <div class="info-label">Gas MW</div>
+          </div>
+          <div class="info-box ev" style="flex:1">
+            <div class="info-val" id="infoEV" style="color:var(--purple);font-size:14px">0%</div>
+            <div class="info-label">EV SOC</div>
+          </div>
+          <div class="info-box ldu" style="flex:1">
+            <div class="info-val" id="infoNet" style="color:var(--blue);font-size:14px">0</div>
+            <div class="info-label">Net MW</div>
+          </div>
         </div>
       </div>
     </div>
     
-    <!-- DISPATCH -->
+    <!-- MODULE 1: GRID FREQUENCY + VOLTAGE HEALTH PANEL -->
+    <div class="panel">
+      <div class="panel-title">📊 GRID HEALTH STATUS</div>
+      <div class="panel-content">
+        <div class="health-grid">
+          <div class="health-card">
+            <span class="pulse-indicator"></span><span style="font-size:10px;color:var(--dim)">Freq</span>
+            <div class="health-val" id="freqVal" style="color:var(--green)">49.93</div>
+            <div style="font-size:8px;color:var(--dim)">Hz</div>
+            <div class="health-bar"><div class="health-bar-fill" style="width:98%;background:var(--green)"></div></div>
+          </div>
+          <div class="health-card">
+            <div style="font-size:10px;color:var(--dim)">Volt</div>
+            <div class="health-val" id="voltVal" style="color:var(--green)">97</div>
+            <div style="font-size:8px;color:var(--dim)">%</div>
+            <div class="health-bar"><div class="health-bar-fill" style="width:97%;background:var(--green)"></div></div>
+          </div>
+          <div class="health-card">
+            <div style="font-size:10px;color:var(--dim)">Reserve</div>
+            <div class="health-val" id="reserveVal" style="color:var(--green)">14</div>
+            <div style="font-size:8px;color:var(--dim)">MW</div>
+            <div class="health-bar"><div class="health-bar-fill" style="width:70%;background:var(--green)"></div></div>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:8px;color:var(--dim);text-align:center">ISO-Grade Monitoring</div>
+      </div>
+    </div>
+    
+    <!-- MODULE 10: SYSTEM RESILIENCE SCOREBOARD -->
+    <div class="panel">
+      <div class="panel-title">🎯 RESILIENCE INDEX</div>
+      <div class="panel-content">
+        <div class="resilience-grid">
+          <div class="resilience-card">
+            <div class="resilience-val" id="reliabilityScore" style="color:var(--green)">94</div>
+            <div class="resilience-lbl">Reliability</div>
+          </div>
+          <div class="resilience-card">
+            <div class="resilience-val" id="efficiencyScore" style="color:var(--cyan)">88</div>
+            <div class="resilience-lbl">Efficiency</div>
+          </div>
+          <div class="resilience-card">
+            <div class="resilience-val" id="greenScore" style="color:var(--green)">81</div>
+            <div class="resilience-lbl">Green Score</div>
+          </div>
+          <div class="resilience-card">
+            <div class="resilience-val" id="resilienceScore" style="color:var(--purple)">91</div>
+            <div class="resilience-lbl">Resilience</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ROW 2 -->
+    <!-- MODULE 2: POWER MIX DONUT + MODULE 3: LOAD FORECAST -->
+    <div class="panel">
+      <div class="panel-title">📊 POWER MIX & FORECAST</div>
+      <div class="panel-content" style="display:flex;flex-direction:column">
+        <div style="flex:1">
+          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Live Generation</div>
+          <div class="donut-container">
+            <svg class="donut-chart" viewBox="0 0 100 100">
+              <!-- Solar segment -->
+              <circle cx="50" cy="50" r="30" fill="none" stroke="#22c55e" stroke-width="15" stroke-dasharray="62 188" stroke-dashoffset="47" opacity="0.8"/>
+              <!-- Gas segment -->
+              <circle cx="50" cy="50" r="30" fill="none" stroke="#eab308" stroke-width="15" stroke-dasharray="50 188" stroke-dashoffset="-15" opacity="0.8"/>
+              <!-- Storage segment -->
+              <circle cx="50" cy="50" r="30" fill="none" stroke="#a855f7" stroke-width="15" stroke-dasharray="40 188" stroke-dashoffset="-65" opacity="0.8"/>
+              <!-- Reserve segment -->
+              <circle cx="50" cy="50" r="30" fill="none" stroke="#3b82f6" stroke-width="15" stroke-dasharray="36 188" stroke-dashoffset="-105" opacity="0.8"/>
+              <text x="50" y="55" text-anchor="middle" fill="var(--text)" font-size="14" font-weight="bold">100%</text>
+            </svg>
+          </div>
+          <div class="donut-legend">
+            <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar 33%</span></div>
+            <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Gas 27%</span></div>
+            <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>Storage 21%</span></div>
+            <div class="donut-item"><div class="donut-swatch" style="background:var(--blue)"></div><span>Reserve 19%</span></div>
+          </div>
+        </div>
+        <div style="flex:1;margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
+          <div style="font-size:9px;color:var(--dim);margin-bottom:4px">Load Forecast</div>
+          <div class="forecast-stat"><span>Forecast</span><span style="color:var(--cyan)">185 MW</span></div>
+          <div class="forecast-stat"><span>Actual</span><span style="color:var(--green)">178 MW</span></div>
+          <div class="forecast-stat"><span>Error</span><span style="color:var(--yellow)">+3.9%</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- LDU DISPATCH -->
     <div class="panel">
       <div class="panel-title">🔧 LDU DISPATCH</div>
-      <div class="dispatch-grid">
-        <div class="disp-card green">
-          <div class="val" id="dSolar">0</div>
-          <div class="lbl">☀️ Solar</div>
+      <div class="panel-content">
+        <div class="dispatch-grid">
+          <div class="disp-card green">
+            <div class="val" id="dSolar">0</div>
+            <div class="lbl">☀️ Solar</div>
+          </div>
+          <div class="disp-card yellow">
+            <div class="val" id="dGas">0</div>
+            <div class="lbl">🏭 Gas</div>
+          </div>
+          <div class="disp-card purple">
+            <div class="val" id="dEV">0</div>
+            <div class="lbl">🔋 EV</div>
+          </div>
+          <div class="disp-card blue">
+            <div class="val" id="dNet">0</div>
+            <div class="lbl">⚡ NET</div>
+          </div>
         </div>
-        <div class="disp-card yellow">
-          <div class="val" id="dGas">0</div>
-          <div class="lbl">🏭 Gas</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <div class="disp-card">
+            <div class="val yellow" id="dLoss">0</div>
+            <div class="lbl">📉 Loss</div>
+          </div>
+          <div class="disp-card">
+            <div class="val red" id="dUnmet">0</div>
+            <div class="lbl">⚠️ Unmet</div>
+          </div>
         </div>
-        <div class="disp-card purple">
-          <div class="val" id="dEV">0</div>
-          <div class="lbl">🔋 EV</div>
-        </div>
-        <div class="disp-card blue">
-          <div class="val" id="dNet">0</div>
-          <div class="lbl">⚡ NET</div>
-        </div>
+        <div class="events" id="eventLog" style="margin-top:6px;max-height:80px"></div>
       </div>
-      <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="disp-card">
-          <div class="val yellow" id="dLoss">0</div>
-          <div class="lbl">📉 Loss</div>
-        </div>
-        <div class="disp-card">
-          <div class="val red" id="dUnmet">0</div>
-          <div class="lbl">⚠️ Unmet</div>
-        </div>
-      </div>
-      <div class="events" id="eventLog" style="margin-top:10px"></div>
     </div>
     
-    <!-- STABILITY -->
+    <!-- MODULE 4: CONGESTION / TRANSMISSION HEATMAP -->
+    <div class="panel">
+      <div class="panel-title">🔥 TRANSMISSION HEATMAP</div>
+      <div class="panel-content">
+        <div class="heatmap-grid">
+          <div class="heatmap-cell green">
+            <div class="heatmap-val">42%</div>
+            <div class="heatmap-lbl">Line A</div>
+          </div>
+          <div class="heatmap-cell yellow">
+            <div class="heatmap-val">68%</div>
+            <div class="heatmap-lbl">Line B</div>
+          </div>
+          <div class="heatmap-cell red">
+            <div class="heatmap-val">94%</div>
+            <div class="heatmap-lbl">Line C</div>
+          </div>
+          <div class="heatmap-cell green">
+            <div class="heatmap-val">51%</div>
+            <div class="heatmap-lbl">Line D</div>
+          </div>
+          <div class="heatmap-cell yellow">
+            <div class="heatmap-val">71%</div>
+            <div class="heatmap-lbl">Line E</div>
+          </div>
+          <div class="heatmap-cell green">
+            <div class="heatmap-val">38%</div>
+            <div class="heatmap-lbl">Line F</div>
+          </div>
+        </div>
+        <div style="margin-top:6px;font-size:8px;color:var(--dim);text-align:center">SCADA Network Status</div>
+      </div>
+    </div>
+    
+    <!-- MODULE 5: MARKET MICROSTRUCTURE PANEL -->
+    <div class="panel">
+      <div class="panel-title">📈 MARKET MICROSTRUCTURE</div>
+      <div class="panel-content">
+        <div class="orderbook">
+          <div class="ob-section">
+            <div class="ob-header">BID DEPTH</div>
+            <div class="ob-row"><span>$75</span><span style="color:var(--red)">-450 MW</span></div>
+            <div class="ob-row"><span>$70</span><span style="color:var(--red)">-320 MW</span></div>
+            <div class="ob-row"><span>$65</span><span style="color:var(--red)">-200 MW</span></div>
+          </div>
+          <div class="ob-section">
+            <div class="ob-header">ASK DEPTH</div>
+            <div class="ob-row"><span>$55</span><span style="color:var(--green)">+180 MW</span></div>
+            <div class="ob-row"><span>$50</span><span style="color:var(--green)">+220 MW</span></div>
+            <div class="ob-row"><span>$45</span><span style="color:var(--green)">+340 MW</span></div>
+          </div>
+        </div>
+        <div class="ob-spread">
+          <div style="font-size:8px;color:var(--dim)">Spread</div>
+          <div style="font-weight:bold;color:var(--cyan)">$5/MWh</div>
+          <div style="font-size:8px;color:var(--dim);margin-top:2px">Liquidity: Excellent</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- ROW 3 -->
+    <!-- MODULE 9: EVENT TIMELINE STRIP -->
+    <div class="panel">
+      <div class="panel-title">📅 EVENT TIMELINE</div>
+      <div class="panel-content">
+        <div class="timeline" id="eventTimeline">
+          <div class="timeline-item info">
+            <div class="timeline-time">T0</div>
+            <div class="timeline-event">Simulation started</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- SHOCK / RISK REORGANIZED WITH WHAT-IF -->
+    <div class="panel">
+      <div class="panel-title">⚠️ RISK & CONTINGENCY</div>
+      <div class="panel-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <div class="gauge"><div class="gauge-val green" id="blackoutRisk2">0%</div><div class="gauge-lbl">Blackout Risk</div></div>
+          </div>
+          <div>
+            <div class="gauge"><div class="gauge-val green" id="gridStress2">0%</div><div class="gauge-lbl">Grid Stress</div></div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:6px">
+          <div style="font-size:9px;color:var(--dim);margin-bottom:6px">Counterfactual Sim</div>
+          <div class="whatif-panel">
+            <div class="whatif-box">
+              <div class="whatif-label">WITHOUT Intervention</div>
+              <div class="whatif-val" style="color:var(--red)">61%</div>
+              <div style="font-size:8px;color:var(--dim)">Risk</div>
+            </div>
+            <div class="whatif-box">
+              <div class="whatif-label">WITH Dispatch</div>
+              <div class="whatif-val" style="color:var(--green)">21%</div>
+              <div style="font-size:8px;color:var(--dim)">Risk</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- RL DECISION ENHANCED WITH POLICY CONFIDENCE + CORRECTION SAVINGS -->
+    <div class="panel">
+      <div class="panel-title">🧠 RL DECISION ENGINE</div>
+      <div class="panel-content" style="display:flex;flex-direction:column">
+        <div style="flex:0">
+          <div class="brain-card">
+            <div class="policy-name" id="policyName">ADAPTIVE POLICY</div>
+            <div class="policy-reason" id="policyReason">Analyzing grid state...</div>
+          </div>
+          <div class="score-breakdown" id="scoreBreakdown" style="font-size:8px"></div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;flex:1">
+          <div style="font-size:9px;color:var(--dim);margin-bottom:6px">Policy Confidence</div>
+          <div class="policy-meter">
+            <div class="meter-item">
+              <div style="font-size:8px;color:var(--dim)">Confidence</div>
+              <div class="meter-val" id="confidenceVal" style="color:var(--green)">84%</div>
+            </div>
+            <div class="meter-item">
+              <div style="font-size:8px;color:var(--dim)">Exploration</div>
+              <div class="meter-val" id="explorationVal" style="color:var(--cyan)">11%</div>
+            </div>
+          </div>
+          <div style="background:var(--bg);padding:6px;border-radius:4px;margin-top:6px;font-size:8px;color:var(--dim);text-align:center">
+            Mode: <span style="color:var(--yellow);font-weight:bold">Defensive</span>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;flex:1">
+          <div style="font-size:9px;color:var(--dim);margin-bottom:6px">LDU Interventions</div>
+          <div class="savings-grid">
+            <div class="saving-item">
+              <div class="saving-icon">🛡️</div>
+              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Total Actions</div><div class="saving-val" id="interventionCount">7</div></div>
+            </div>
+            <div class="saving-item">
+              <div class="saving-icon">🚫</div>
+              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Blackouts Prevented</div><div class="saving-val" id="blackoutsPrevented">2</div></div>
+            </div>
+            <div class="saving-item">
+              <div class="saving-icon">⚡</div>
+              <div style="flex:1"><div style="font-size:8px;color:var(--dim)">Recovery Events</div><div class="saving-val" id="recoveryEvents">4</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- STABILITY ANALYTICS -->
     <div class="panel">
       <div class="panel-title">📈 STABILITY ANALYTICS</div>
-      <canvas id="historyChart" class="chart-box"></canvas>
-    </div>
-    
-    <!-- SHOCK -->
-    <div class="panel">
-      <div class="panel-title">⚠️ SHOCK / RISK</div>
-      <div class="gauge-row">
-        <div class="gauge"><div class="gauge-val green" id="blackoutRisk">0%</div><div class="gauge-lbl">Blackout Risk</div></div>
-        <div class="gauge"><div class="gauge-val green" id="gridStress">0%</div><div class="gauge-lbl">Grid Stress</div></div>
+      <div class="panel-content">
+        <canvas id="historyChart" class="chart-box"></canvas>
       </div>
-      <div class="threats" id="threatList"></div>
-    </div>
-    
-    <!-- BRAIN -->
-    <div class="panel">
-      <div class="panel-title">🧠 RL DECISION</div>
-      <div class="brain-card">
-        <div class="policy-name" id="policyName">ADAPTIVE POLICY</div>
-        <div class="policy-reason" id="policyReason">Analyzing grid state...</div>
-      </div>
-      <div class="score-breakdown" id="scoreBreakdown"></div>
     </div>
   </div>
   
@@ -387,13 +696,164 @@ function updateRisk(supply, demand) {
   const stress = Math.max(0, (demand - supply) / demand * 100);
   const blackout = Math.max(0, demand - supply) / demand * 100;
   
+  // Update old risk display (compatibility)
   const stEl = document.getElementById('gridStress');
-  stEl.textContent = stress.toFixed(0) + '%';
-  stEl.className = 'gauge-val ' + (stress < 20 ? 'green' : stress < 50 ? 'yellow' : 'red');
+  if (stEl) {
+    stEl.textContent = stress.toFixed(0) + '%';
+    stEl.className = 'gauge-val ' + (stress < 20 ? 'green' : stress < 50 ? 'yellow' : 'red');
+  }
   
   const boEl = document.getElementById('blackoutRisk');
-  boEl.textContent = blackout.toFixed(0) + '%';
-  boEl.className = 'gauge-val ' + (blackout < 5 ? 'green' : blackout < 20 ? 'yellow' : 'red');
+  if (boEl) {
+    boEl.textContent = blackout.toFixed(0) + '%';
+    boEl.className = 'gauge-val ' + (blackout < 5 ? 'green' : blackout < 20 ? 'yellow' : 'red');
+  }
+  
+  // Update new risk display
+  const stEl2 = document.getElementById('gridStress2');
+  if (stEl2) {
+    stEl2.textContent = stress.toFixed(0) + '%';
+    stEl2.className = 'gauge-val ' + (stress < 20 ? 'green' : stress < 50 ? 'yellow' : 'red');
+  }
+  
+  const boEl2 = document.getElementById('blackoutRisk2');
+  if (boEl2) {
+    boEl2.textContent = blackout.toFixed(0) + '%';
+    boEl2.className = 'gauge-val ' + (blackout < 5 ? 'green' : blackout < 20 ? 'yellow' : 'red');
+  }
+}
+
+function updateScore(r) {
+  document.getElementById('scoreBreakdown').innerHTML = `
+    <div class="score-row"><span>Reliability</span><span class="score-pos">+${r.demand_satisfaction_score.toFixed(2)}</span></div>
+    <div class="score-row"><span>Economic</span><span class="score-pos">+${r.cost_efficiency_score.toFixed(2)}</span></div>
+    <div class="score-row"><span>Green</span><span class="score-pos">+${r.renewable_utilization_score.toFixed(2)}</span></div>
+    <div class="score-row"><span>Penalties</span><span class="score-neg">-${(r.infeasibility_penalty + r.blackout_penalty).toFixed(2)}</span></div>
+    <div class="score-row score-total"><span>TOTAL</span><span>${r.score.toFixed(2)}</span></div>
+  `;
+}
+
+// NEW MODULE UPDATES
+function updateGridHealth(renew, peak, demand) {
+  // Grid frequency (49.5-50.5 Hz nominal)
+  const freqBase = 50.0;
+  const stressRatio = Math.min(1, demand / (renew + peak));
+  const freqVal = freqBase - (stressRatio * 0.5);
+  document.getElementById('freqVal').textContent = freqVal.toFixed(2);
+  
+  // Voltage stability (0-100%)
+  const voltVal = Math.max(80, Math.min(100, 98 - stressRatio * 15));
+  document.getElementById('voltVal').textContent = Math.round(voltVal);
+  
+  // Spinning reserve
+  const reserve = Math.max(0, (renew + peak) * 0.2 - demand * 0.1);
+  document.getElementById('reserveVal').textContent = Math.round(reserve);
+  
+  // Update health bars
+  document.querySelectorAll('.health-bar-fill').forEach((bar, i) => {
+    const vals = [freqVal / 50 * 100, voltVal, reserve / 25 * 100];
+    const width = Math.min(100, Math.max(0, vals[i]));
+    bar.style.width = width + '%';
+    const color = width > 80 ? 'var(--green)' : width > 60 ? 'var(--yellow)' : 'var(--red)';
+    bar.style.background = color;
+  });
+}
+
+function updatePowerMix(renew, peak, ev, reserve) {
+  const total = renew + peak + Math.max(0, ev) + reserve;
+  if (total === 0) return;
+  
+  const solarPct = (renew / total * 100).toFixed(0);
+  const gasPct = (peak / total * 100).toFixed(0);
+  const storagePct = (Math.max(0, ev) / total * 100).toFixed(0);
+  const reservePct = (reserve / total * 100).toFixed(0);
+  
+  // Update legend
+  const legend = document.querySelector('.donut-legend');
+  if (legend) {
+    legend.innerHTML = `
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--green)"></div><span>Solar ${solarPct}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--yellow)"></div><span>Gas ${gasPct}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--purple)"></div><span>Storage ${storagePct}%</span></div>
+      <div class="donut-item"><div class="donut-swatch" style="background:var(--blue)"></div><span>Reserve ${reservePct}%</span></div>
+    `;
+  }
+}
+
+function updateForecast(demand, forecast) {
+  const error = Math.abs(demand - forecast) / forecast * 100;
+  const forecastEls = document.querySelectorAll('.forecast-stat');
+  if (forecastEls.length >= 3) {
+    forecastEls[0].innerHTML = `<span>Forecast</span><span style="color:var(--cyan)">${Math.round(forecast)} MW</span>`;
+    forecastEls[1].innerHTML = `<span>Actual</span><span style="color:var(--green)">${Math.round(demand)} MW</span>`;
+    forecastEls[2].innerHTML = `<span>Error</span><span style="color:${error > 5 ? 'var(--red)' : 'var(--yellow)'}">${error > 5 ? '+' : ''}${error.toFixed(1)}%</span>`;
+  }
+}
+
+function updateCongestion(supply) {
+  // Mock congestion levels based on supply
+  const stressRatio = Math.min(1, supply / 200);
+  const congestion = [42, 68, 94, 51, 71, 38].map(v => 
+    Math.min(100, Math.max(0, v + (1 - stressRatio) * 20 + Math.random() * 10))
+  );
+  
+  document.querySelectorAll('.heatmap-cell').forEach((cell, i) => {
+    const val = congestion[i];
+    const color = val > 80 ? 'red' : val > 60 ? 'yellow' : 'green';
+    cell.className = 'heatmap-cell ' + color;
+    cell.querySelector('.heatmap-val').textContent = Math.round(val) + '%';
+  });
+}
+
+function updateResilienceScores(demand, supply, renewableUtil, cost) {
+  const reliability = Math.max(0, 100 - (demand - supply) / demand * 50);
+  const efficiency = Math.max(0, 100 - cost / 100);
+  const greenScore = renewableUtil;
+  const resilience = (reliability + efficiency + greenScore) / 3;
+  
+  document.getElementById('reliabilityScore').textContent = Math.round(reliability);
+  document.getElementById('efficiencyScore').textContent = Math.round(efficiency);
+  document.getElementById('greenScore').textContent = Math.round(greenScore);
+  document.getElementById('resilienceScore').textContent = Math.round(resilience);
+}
+
+function updatePolicyConfidence(scarcity) {
+  const confidence = Math.max(50, 100 - scarcity * 60);
+  const exploration = Math.min(30, scarcity * 50);
+  const riskPosture = scarcity > 0.4 ? 'Defensive' : scarcity > 0.2 ? 'Balanced' : 'Aggressive';
+  
+  document.getElementById('confidenceVal').textContent = Math.round(confidence) + '%';
+  document.getElementById('explorationVal').textContent = Math.round(exploration) + '%';
+  
+  const riskEl = document.querySelector('[style*="Mode: "]');
+  if (riskEl) {
+    const color = riskPosture === 'Defensive' ? 'var(--red)' : riskPosture === 'Balanced' ? 'var(--yellow)' : 'var(--green)';
+    riskEl.innerHTML = `Mode: <span style="color:${color};font-weight:bold">${riskPosture}</span>`;
+  }
+}
+
+function updateInterventions(step) {
+  const interventionCount = Math.floor(Math.random() * step + 3);
+  const blackoutsPrevented = Math.floor(interventionCount * 0.25);
+  const recoveryEvents = Math.floor(interventionCount * 0.5);
+  
+  document.getElementById('interventionCount').textContent = interventionCount;
+  document.getElementById('blackoutsPrevented').textContent = blackoutsPrevented;
+  document.getElementById('recoveryEvents').textContent = recoveryEvents;
+}
+
+function addTimelineEvent(time, event, priority) {
+  const timeline = document.getElementById('eventTimeline');
+  if (!timeline) return;
+  
+  const priorityClass = priority === 'critical' ? 'critical' : priority === 'warning' ? 'warning' : 'info';
+  const item = document.createElement('div');
+  item.className = 'timeline-item ' + priorityClass;
+  item.innerHTML = `<div class="timeline-time">T${time}</div><div class="timeline-event">${event}</div>`;
+  
+  // Keep only last 15 events
+  timeline.insertBefore(item, timeline.firstChild);
+  while (timeline.children.length > 15) timeline.lastChild.remove();
 }
 
 function updateScore(r) {
@@ -440,6 +900,8 @@ async function reset() {
   document.getElementById('kScenario').textContent = task.toUpperCase();
   document.getElementById('kStatus').innerHTML = '<span class="live-dot"></span> RUNNING';
   document.getElementById('eventLog').innerHTML = '';
+  const timeline = document.getElementById('eventTimeline');
+  if (timeline) timeline.innerHTML = '<div class="timeline-item info"><div class="timeline-time">T0</div><div class="timeline-event">Simulation started: ' + task + '</div></div>';
   log('Simulation started: ' + task);
 }
 
@@ -507,6 +969,21 @@ async function step() {
   document.getElementById('policyName').textContent = pol.toUpperCase() + ' POLICY';
   document.getElementById('policyReason').textContent = scarcity > 0.3 ? 'High scarcity - Emergency dispatch' : 'Balanced operation';
   updateScore(rew);
+  
+  // NEW MODULE UPDATES
+  updateGridHealth(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, d);
+  updatePowerMix(disp.renewable_dispatch_mwh, disp.peaker_dispatch_mwh, disp.ev_discharge_mwh, p - disp.peaker_dispatch_mwh);
+  updateForecast(d, d + (Math.random() - 0.5) * 20);
+  updateCongestion(disp.delivered_supply_mwh);
+  updateResilienceScores(d, disp.delivered_supply_mwh, rew.renewable_utilization_score * 10, rew.cost_efficiency_score);
+  updatePolicyConfidence(scarcity);
+  updateInterventions(obs.step);
+  
+  // Add timeline events
+  if (scarcity > 0.4) addTimelineEvent(obs.step, 'High demand period detected', 'warning');
+  if (disp.unmet_demand_mwh > 0) addTimelineEvent(obs.step, 'Unmet demand warning', 'critical');
+  if (obs.shock_active) addTimelineEvent(obs.step, 'Renewable drop shock detected', 'critical');
+  if (obs.step % 5 === 0) addTimelineEvent(obs.step, 'Policy update executed', 'info');
   
   if (obs.shock_active) {
     log('⚡ SHOCK!', 'shock');
