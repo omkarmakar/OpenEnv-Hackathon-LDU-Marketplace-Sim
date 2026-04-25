@@ -1,6 +1,6 @@
 # OpenEnv Smart Grid MarketSim
 
-Multi-agent electricity market simulation with physical feasibility correction, reliability constraints, contingency handling, forecast uncertainty, and emissions-aware optimization.
+Multi-agent electricity market simulation with an explicit Reliability Dispatch Control Agent, a Physics-Constrained Safety Shield, reliability constraints, contingency handling, forecast uncertainty, and emissions-aware optimization.
 
 ## What Makes This Different
 
@@ -10,27 +10,29 @@ This environment scores **physically delivered outcomes after dispatch correctio
 Core loop:
 1. Agents submit bids and EV actions
 2. Market clearing produces economic intent
-3. LDU enforces physical feasibility (including reserve/ramp/startup constraints)
-4. Reward is computed with reliability-first hierarchy
-5. Dynamics evolve demand/renewables/price with uncertainty and contingencies
+3. Reliability Dispatch Control Agent proposes corrective dispatch
+4. Physics-Constrained Safety Shield enforces physical feasibility (including reserve/ramp/startup constraints)
+5. Reward is computed with reliability-first hierarchy
+6. Dynamics evolve demand/renewables/price with uncertainty and contingencies
 
 ## Current Capability Snapshot
 
 - **Market layer:** leader-signal-influenced bid clearing
-- **Physical layer (LDU):**
+- **Control layer:** Reliability Dispatch Control Agent with explicit corrective dispatch action space
+- **Physical layer (Physics-Constrained Safety Shield):**
   - SOC limits and charge/discharge consistency
   - transmission/storage losses
   - reserve requirement and reserve shortfall tracking
   - ramp-rate constraints for peaker and EV discharge
   - peaker startup cost accounting
   - emissions and carbon-cost accounting
-  - frequency and line-loading consequence coupling
+  - frequency and branch-loading consequence coupling
   - reserve commitment gate and emergency dispatch trigger path
   - peaker activation delay semantics (task-configurable)
 - **Uncertainty and resilience:**
   - stochastic demand/renewable evolution
   - forecast-vs-realized channels
-  - contingency events (`peaker_trip`, `transmission_derate`)
+  - contingency events (`peaker_trip`, `transmission_derate`, `n_minus_one`)
 - **Reward design:** reliability-first hierarchical scoring
 - **Evaluation:** policy x scenario x seed comparison artifacts for cost/blackouts/violations/emissions/reserve shortfall/stability events
 - **Demo:** operator override and resilience scenario endpoint
@@ -63,11 +65,14 @@ Benchmark protocol labels used in reports:
 - `GET /events/stream`
 - `POST /inject-shock`
 - `POST /operator-override`
+- `POST /dispatch-act`
 - `GET /info`
 - `POST /run-inference`
 - `POST /run-demo-mode`
 - `POST /run-resilience-demo`
 - `GET /demo`
+
+`/run-demo-mode` and the interactive demo support a dispatcher toggle so you can compare runs with and without the control agent.
 
 `/run-resilience-demo` now reports trajectory-level resilience deltas:
 - `blackout_step_delta`

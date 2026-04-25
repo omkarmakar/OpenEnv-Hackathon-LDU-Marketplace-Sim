@@ -113,10 +113,13 @@ def enforce_dispatch(
 
     reserve_ratio = reserve_shortfall / max(reserve_requirement, 1.0)
     frequency_hz = max(49.0, min(50.2, 50.0 - 0.7 * (unmet_demand / max(demand_mwh, 1e-6)) - 0.25 * reserve_ratio))
-    line_loading_ratio = _safe_ratio(
-        gross_supply, max(1.0, peaker_capacity_mwh + renewable_available_mwh + max_discharge)
+    branch_loading_ratio = max(
+        _safe_ratio(renewable_dispatch, max(1.0, renewable_available_mwh)),
+        _safe_ratio(peaker_dispatch, max(1.0, peaker_capacity_mwh)),
+        _safe_ratio(ev_discharge_mwh, max(1.0, max_discharge)),
+        _safe_ratio(gross_supply, max(1.0, demand_mwh)),
     )
-    emergency_dispatch_triggered = frequency_hz < 49.75 or line_loading_ratio > 1.02 or reserve_commitment_active
+    emergency_dispatch_triggered = frequency_hz < 49.75 or branch_loading_ratio > 1.02 or reserve_commitment_active
     emergency_support_mwh = 0.0
     if emergency_dispatch_triggered and unmet_demand > 0.0:
         peaker_headroom = max(0.0, peaker_capacity_mwh - peaker_dispatch)
@@ -135,8 +138,11 @@ def enforce_dispatch(
         reserve_shortfall = max(0.0, reserve_requirement - spinning_reserve)
         reserve_ratio = reserve_shortfall / max(reserve_requirement, 1.0)
         frequency_hz = max(49.0, min(50.2, 50.0 - 0.7 * (unmet_demand / max(demand_mwh, 1e-6)) - 0.25 * reserve_ratio))
-        line_loading_ratio = _safe_ratio(
-            gross_supply, max(1.0, peaker_capacity_mwh + renewable_available_mwh + max_discharge)
+        branch_loading_ratio = max(
+            _safe_ratio(renewable_dispatch, max(1.0, renewable_available_mwh)),
+            _safe_ratio(peaker_dispatch, max(1.0, peaker_capacity_mwh)),
+            _safe_ratio(ev_discharge_mwh, max(1.0, max_discharge)),
+            _safe_ratio(gross_supply, max(1.0, demand_mwh)),
         )
         corrections.append("Emergency dispatch support activated")
 
@@ -155,7 +161,7 @@ def enforce_dispatch(
         0.35 * (unmet_demand / max(demand_mwh, 1.0))
         + 0.25 * (reserve_shortfall / max(reserve_requirement, 1.0))
         + 0.20 * max(0.0, 49.95 - frequency_hz)
-        + 0.20 * max(0.0, line_loading_ratio - 0.9)
+        + 0.20 * max(0.0, branch_loading_ratio - 0.9)
     )
 
     dispatch = {
@@ -181,7 +187,8 @@ def enforce_dispatch(
         "emissions_tco2": round(emissions_tco2, 5),
         "emissions_cost_usd": round(emissions_cost_usd, 3),
         "frequency_hz": round(frequency_hz, 4),
-        "line_loading_ratio": round(line_loading_ratio, 4),
+        "line_loading_ratio": round(branch_loading_ratio, 4),
+        "branch_loading_ratio": round(branch_loading_ratio, 4),
         "emergency_dispatch_triggered": emergency_dispatch_triggered,
         "emergency_support_mwh": round(emergency_support_mwh, 3),
         "stability_risk_index": round(stability_risk_index, 4),

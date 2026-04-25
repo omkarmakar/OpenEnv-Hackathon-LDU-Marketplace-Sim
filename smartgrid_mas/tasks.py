@@ -182,7 +182,7 @@ TASKS: Dict[str, TaskConfig] = {
     ),
     "outage": TaskConfig(
         task_id="outage",
-        description="Outage benchmark with peaker trip contingency and delayed thermal recovery.",
+        description="Outage benchmark with N-1 generator-or-feeder contingency and delayed thermal recovery.",
         max_steps=30,
         initial_demand_mwh=142.0,
         initial_renewable_mwh=82.0,
@@ -206,10 +206,10 @@ TASKS: Dict[str, TaskConfig] = {
         carbon_price_usd_per_tco2=70.0,
         load_forecast_sigma=7.5,
         renewable_forecast_sigma=9.0,
-        contingency_type="peaker_trip",
+        contingency_type="n_minus_one",
         contingency_step=10,
         contingency_derate_pct=0.6,
-        hint="Outage mode: reserve and startup realism dominate.",
+        hint="Outage mode: N-1 resilience, reserve, and startup realism dominate.",
     ),
     "renewable_collapse": TaskConfig(
         task_id="renewable_collapse",

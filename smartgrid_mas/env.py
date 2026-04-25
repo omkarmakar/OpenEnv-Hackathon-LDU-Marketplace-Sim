@@ -8,11 +8,13 @@ from smartgrid_mas.engine.policies import (
     heuristic_joint_action,
     random_joint_action,
 )
+from smartgrid_mas.engine.control import ReliabilityDispatchControlAgent
 from smartgrid_mas.engine.dynamics import evolve_grid
 from smartgrid_mas.engine.ldu import enforce_dispatch
 from smartgrid_mas.engine.market import clear_market
 from smartgrid_mas.engine.reward import compute_reward
 from smartgrid_mas.models import (
+    DispatchAction,
     JointAction,
     MarketObservation,
     MarketReward,
@@ -25,7 +27,8 @@ from smartgrid_mas.tasks import TaskConfig, get_task, list_tasks
 
 SCHEMA_INFO = (
     "Provide a JointAction with supply and demand bids from multiple agents plus EV charge/discharge "
-    "commands. Market clears bids first, then LDU enforces physical feasibility and logs corrections."
+    "commands. Market clears bids first, then the Reliability Dispatch Control Agent proposes corrective dispatch, "
+    "and the Physics-Constrained Safety Shield enforces physical feasibility and logs corrections."
 )
 
 
@@ -143,7 +146,12 @@ class SmartGridMarketEnv:
             observation=session.to_observation(hint=task.hint),
         )
 
-    def step(self, action: JointAction, session_id: Optional[str] = None) -> StepResponse:
+    def step(
+        self,
+        action: JointAction,
+        session_id: Optional[str] = None,
+        dispatch_action: Optional[DispatchAction] = None,
+    ) -> StepResponse:
         session = self._get_session(session_id)
         if session.done:
             return StepResponse(
@@ -170,7 +178,15 @@ class SmartGridMarketEnv:
         if session.operator_override_enabled:
             applied_action = heuristic_joint_action(session.to_observation(), personality="risk_averse")
         market = clear_market(applied_action.bids, leader_price_signal=session.base_price)
+        dispatch_action = dispatch_action or self._resolve_dispatch_action(session, market, session.to_observation())
         effective_peaker_capacity = session.peaker_capacity_mwh * session.contingency_peaker_multiplier
+        effective_peaker_capacity += dispatch_action.reserve_activation_mwh + dispatch_action.peaker_adjustment_mwh
+        applied_ev_charge = applied_action.ev_charge_mwh
+        applied_ev_discharge = applied_action.ev_discharge_mwh
+        if dispatch_action.storage_dispatch_mwh >= 0.0:
+            applied_ev_discharge += dispatch_action.storage_dispatch_mwh
+        else:
+            applied_ev_charge += abs(dispatch_action.storage_dispatch_mwh)
         expected_residual = max(0.0, market.get("cleared_mwh", 0.0) - session.renewable_mwh)
         if (
             session.task.peaker_activation_delay_steps > 0
@@ -186,19 +202,32 @@ class SmartGridMarketEnv:
                     "delay_steps": session.task.peaker_activation_delay_steps,
                 }
             )
+        dispatch_override_active = (
+            dispatch_action.reserve_activation_mwh > 0.0
+            or dispatch_action.peaker_adjustment_mwh > 0.0
+            or dispatch_action.storage_dispatch_mwh > 0.0
+            or dispatch_action.corrective_redispatch_mwh > 0.0
+        )
+        if dispatch_override_active and session.peaker_activation_timer > 0:
+            session.peaker_activation_timer = 0
         if session.peaker_activation_timer > 0:
             effective_peaker_capacity = 0.0
             session.peaker_activation_timer -= 1
 
+        adjusted_market = dict(market)
+        dispatch_target_shift = dispatch_action.corrective_redispatch_mwh
+        adjusted_market["cleared_mwh"] = max(0.0, adjusted_market.get("cleared_mwh", 0.0) + dispatch_target_shift)
+        adjusted_market["dispatcher_action"] = dispatch_action.model_dump()
+
         dispatch, next_storage = enforce_dispatch(
-            market_result=market,
+            market_result=adjusted_market,
             demand_mwh=session.demand_mwh,
             renewable_available_mwh=session.renewable_mwh,
             peaker_capacity_mwh=effective_peaker_capacity,
             ev_storage_mwh=session.ev_storage_mwh,
             ev_storage_capacity_mwh=session.ev_storage_capacity_mwh,
-            ev_charge_mwh=applied_action.ev_charge_mwh,
-            ev_discharge_mwh=applied_action.ev_discharge_mwh,
+            ev_charge_mwh=applied_ev_charge,
+            ev_discharge_mwh=applied_ev_discharge,
             reserve_margin_ratio=session.task.reserve_margin_ratio,
             reserve_commitment_threshold_ratio=session.task.reserve_commitment_threshold_ratio,
             peaker_ramp_limit_mwh=session.task.peaker_ramp_limit_mwh,
@@ -273,6 +302,7 @@ class SmartGridMarketEnv:
         event = {
             "step": session.step,
             "market": market,
+            "dispatch_action": dispatch_action.model_dump(),
             "dispatch": dispatch,
             "reward": reward.model_dump(),
             "dynamics": dyn_info,
@@ -285,6 +315,7 @@ class SmartGridMarketEnv:
 
         info = {
             "market": market,
+            "dispatch_action": dispatch_action.model_dump(),
             "dispatch": dispatch,
             "dynamics": dyn_info,
             "agent_private_views": private_views,
@@ -327,6 +358,17 @@ class SmartGridMarketEnv:
             return heuristic_joint_action(obs, personality=personality)
         return adaptive_stackelberg_action(obs, personality=personality)
 
+    def dispatch_action(
+        self,
+        personality: str = "balanced",
+        session_id: Optional[str] = None,
+        cleared_mwh: Optional[float] = None,
+    ) -> DispatchAction:
+        session = self._get_session(session_id)
+        obs = session.to_observation()
+        controller = ReliabilityDispatchControlAgent(personality=personality)
+        return controller.act(obs, cleared_mwh=float(cleared_mwh if cleared_mwh is not None else obs.demand_mwh))
+
     def state(self, session_id: Optional[str] = None) -> StateResponse:
         session = self._get_session(session_id)
         return StateResponse(
@@ -362,10 +404,11 @@ class SmartGridMarketEnv:
     def get_schema(self) -> Dict:
         return {
             "action_schema": JointAction.model_json_schema(),
+            "dispatch_action_schema": DispatchAction.model_json_schema(),
             "observation_schema": MarketObservation.model_json_schema(),
             "reward_schema": MarketReward.model_json_schema(),
             "tasks": list_tasks(),
-            "notes": "Hybrid Theme 1+2+3.1 baseline implementation with LDU as core physical layer",
+            "notes": "Hybrid Theme 1+2+3.1 baseline implementation with the Physics-Constrained Safety Shield as core physical layer",
         }
 
     def set_operator_override(self, enabled: bool, session_id: Optional[str] = None) -> Dict:
@@ -417,3 +460,13 @@ class SmartGridMarketEnv:
                 "arbitrage_spread": round(spread, 3),
             },
         }
+
+    def _resolve_dispatch_action(
+        self,
+        session: Session,
+        market: Dict,
+        observation: MarketObservation,
+        personality: str = "balanced",
+    ) -> DispatchAction:
+        controller = ReliabilityDispatchControlAgent(personality=personality)
+        return controller.act(observation, cleared_mwh=float(market.get("cleared_mwh", observation.demand_mwh)))

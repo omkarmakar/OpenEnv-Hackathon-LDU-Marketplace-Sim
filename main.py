@@ -15,12 +15,12 @@ from smartgrid_mas.engine.policies import (
 )
 from smartgrid_mas.env import SmartGridMarketEnv
 from smartgrid_mas.demo_page import build_demo_html
-from smartgrid_mas.models import JointAction, ResetRequest, StepRequest
+from smartgrid_mas.models import DispatchAction, JointAction, ResetRequest, StepRequest
 
 
 app = FastAPI(
     title="OpenEnv Smart Grid MarketSim",
-    description="Multi-agent market simulator with LDU physical feasibility layer.",
+    description="Multi-agent market simulator with a Reliability Dispatch Control Agent and a Physics-Constrained Safety Shield.",
     version="0.1.0",
 )
 app.add_middleware(
@@ -46,6 +46,7 @@ class InferenceRequest(BaseModel):
     personality: str = "balanced"
     task_id: str = "default"
     seed: Optional[int] = 42
+    dispatcher_enabled: bool = True
 
 
 class ShockRequest(BaseModel):
@@ -55,6 +56,11 @@ class ShockRequest(BaseModel):
 class PolicyActionRequest(BaseModel):
     policy: str = "adaptive"
     personality: str = "balanced"
+
+
+class DispatchActionRequest(BaseModel):
+    personality: str = "balanced"
+    cleared_mwh: Optional[float] = None
 
 
 class OverrideRequest(BaseModel):
@@ -83,11 +89,14 @@ def _rollout_inference(request: InferenceRequest) -> dict:
         else:
             action = heuristic_joint_action(obs, personality=request.personality)
 
-        result = env.step(action=action, session_id=sid)
+        dispatch_action = None if request.dispatcher_enabled else DispatchAction()
+
+        result = env.step(action=action, session_id=sid, dispatch_action=dispatch_action)
         trajectory.append(
             {
                 "step": len(trajectory) + 1,
                 "action": action.model_dump(),
+                "dispatch_action": result.info.get("dispatch_action"),
                 "reward": result.reward.model_dump(),
                 "info": result.info,
             }
@@ -103,6 +112,7 @@ def _rollout_inference(request: InferenceRequest) -> dict:
         "personality": request.personality,
         "task_id": request.task_id,
         "seed": request.seed,
+        "dispatcher_enabled": request.dispatcher_enabled,
         "steps": len(trajectory),
         "average_reward": round(avg_reward, 4),
         "trajectory": trajectory,
@@ -189,7 +199,7 @@ def reset(request: ResetRequest):
 @app.post("/step")
 def step(request: StepRequest, session_id: Optional[str] = Query(default=None)):
     try:
-        return env.step(action=request.action, session_id=session_id)
+        return env.step(action=request.action, session_id=session_id, dispatch_action=request.dispatch_action)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -207,6 +217,15 @@ def act(request: PolicyActionRequest, session_id: Optional[str] = Query(default=
     try:
         action = env.policy_action(policy=request.policy, personality=request.personality, session_id=session_id)
         return {"action": action.model_dump()}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/dispatch-act")
+def dispatch_act(request: DispatchActionRequest, session_id: Optional[str] = Query(default=None)):
+    try:
+        action = env.dispatch_action(personality=request.personality, session_id=session_id, cleared_mwh=request.cleared_mwh)
+        return {"dispatch_action": action.model_dump()}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -274,13 +293,15 @@ def run_inference(request: InferenceRequest):
 
 
 @app.post("/run-demo-mode")
-def run_demo_mode():
+def run_demo_mode(dispatcher_enabled: bool = True):
     request = InferenceRequest(**DEMO_MODE_CONFIG)
+    request.dispatcher_enabled = dispatcher_enabled
     result = _rollout_inference(request)
     result["mode"] = "demo"
     result["deterministic"] = True
+    result["dispatcher_enabled"] = dispatcher_enabled
     result["governing_claim"] = (
-        "Reliable grid balancing emerges when strategic bidding is constrained by physical feasibility."
+        "Reliable grid balancing emerges when strategic bidding is constrained by a dispatch control agent and a physical safety shield."
     )
     return result
 

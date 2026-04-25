@@ -1,0 +1,17 @@
+profile,policy,scenario,task_id,seed_group,episode,rollout_seed,avg_reward,avg_cost_usd,blackout_rate,constraint_violation_rate,emissions_tco2,unmet_energy_mwh,reserve_shortfall_rate,stability_event_rate
+full_ldu,adaptive,normal,normal,0,1,8000,0.577427,31151.676417,0.291667,2.25,1258.2745,143.86,0.0,0.0
+ablate_reserve,adaptive,normal,normal,0,1,8000,0.577427,31151.676417,0.291667,2.25,1258.2745,143.86,0.0,0.0
+ablate_ramp,adaptive,normal,normal,0,1,8000,0.579715,31531.539875,0.208333,1.958333,1298.9222,118.841,0.0,0.0
+ablate_startup_emissions,adaptive,normal,normal,0,1,8000,0.589255,28785.328417,0.291667,2.25,0.0,143.86,0.0,0.0
+full_ldu,adaptive,shock,stress_shock,0,1,8000,0.565708,44623.818267,0.266667,2.533333,2160.4386,208.465,0.0,0.0
+ablate_reserve,adaptive,shock,stress_shock,0,1,8000,0.565708,44623.818267,0.266667,2.533333,2160.4386,208.465,0.0,0.0
+ablate_ramp,adaptive,shock,stress_shock,0,1,8000,0.574881,44483.836333,0.233333,2.1,2169.0385,252.661,0.0,0.0
+ablate_startup_emissions,adaptive,shock,stress_shock,0,1,8000,0.578196,39574.128167,0.266667,2.533333,0.0,208.465,0.0,0.0
+full_ldu,adaptive,outage,outage,0,1,8000,0.552235,40545.593333,0.333333,2.833333,1935.1881,281.453,0.0,0.0
+ablate_reserve,adaptive,outage,outage,0,1,8000,0.552235,40545.593333,0.333333,2.833333,1935.1881,281.453,0.0,0.0
+ablate_ramp,adaptive,outage,outage,0,1,8000,0.577158,38773.5605,0.266667,1.966667,1885.1583,422.128,0.0,0.0
+ablate_startup_emissions,adaptive,outage,outage,0,1,8000,0.563839,36021.6546,0.333333,2.833333,0.0,281.453,0.0,0.0
+full_ldu,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.562083,43827.714433,0.266667,2.666667,2121.3363,239.216,0.0,0.0
+ablate_reserve,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.562083,43827.714433,0.266667,2.666667,2121.3363,239.216,0.0,0.0
+ablate_ramp,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.573354,43122.6807,0.233333,2.066667,2116.7967,315.008,0.0,0.0
+ablate_startup_emissions,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.574248,38515.373567,0.266667,2.666667,0.0,239.216,0.0,0.0

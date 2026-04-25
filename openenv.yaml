@@ -1,8 +1,9 @@
 name: openenv-smartgrid-marketsim
 version: "0.1.0"
 description: >
-  Multi-agent smart-grid market simulation where strategic bids are cleared by a market
-  and then corrected by a load dispatching unit to enforce physical feasibility.
+  Multi-agent smart-grid market simulation where strategic bids are cleared by a market,
+  corrected by an explicit dispatch control agent, and then enforced by a physics-constrained
+  safety shield.
 
 tags:
   - openenv
@@ -49,7 +50,7 @@ tasks:
     difficulty: hard
     max_steps: 30
     description: >
-      Outage benchmark with peaker trip contingency and delayed thermal
+      Outage benchmark with N-1 generator-or-feeder contingency and delayed thermal
       recovery behavior.
     success_threshold: 0.56
   - id: renewable_collapse
@@ -73,6 +74,19 @@ action_space:
     ev_discharge_mwh:
       type: float
       min: 0.0
+
+dispatch_action_space:
+  type: object
+  fields:
+    reserve_activation_mwh:
+      type: float
+      min: 0.0
+    peaker_adjustment_mwh:
+      type: float
+    storage_dispatch_mwh:
+      type: float
+    corrective_redispatch_mwh:
+      type: float
 
 observation_space:
   type: object
@@ -160,6 +174,7 @@ environment:
     - POST /reset
     - POST /step
     - POST /act
+    - POST /dispatch-act
     - GET /state
     - GET /events
     - GET /events/stream

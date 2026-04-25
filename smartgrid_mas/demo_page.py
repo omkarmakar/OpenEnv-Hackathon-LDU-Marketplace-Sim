@@ -591,6 +591,7 @@ def build_demo_html() -> str:
     <button class="btn" id="playBtn">▶ RUN</button>
     <button class="btn" id="pauseBtn">⏹ STOP</button>
     <button class="btn" id="overrideBtn">🧑‍💻 OVERRIDE OFF</button>
+    <button class="btn primary" id="dispatcherBtn">🧭 DISPATCHER ON</button>
     <button class="btn danger" id="shockBtn">⚡ SHOCK</button>
     <button class="btn" id="resilienceBtn">🏆 RESILIENCE DEMO</button>
   </div>
@@ -599,6 +600,7 @@ def build_demo_html() -> str:
 const API = '';
 let sessionId = null, timer = null;
 let operatorOverride = false;
+let dispatcherEnabled = true;
 const historyData = [];
 let dayCurveData = [];
 const runtimeStats = { steps: 0, correctionSteps: 0, zeroUnmetSteps: 0, recoveryEvents: 0, prevUnmet: 0, cumulativeReward: 0 };
@@ -1051,6 +1053,13 @@ runtimeStats.steps = 0;
   runtimeStats.recoveryEvents = 0;
   runtimeStats.prevUnmet = 0;
   runtimeStats.cumulativeReward = 0;
+  dispatcherEnabled = true;
+  const dispatcherBtn = document.getElementById('dispatcherBtn');
+  if (dispatcherBtn) {
+    dispatcherBtn.textContent = '🧭 DISPATCHER ON';
+    dispatcherBtn.style.background = 'var(--green)';
+    dispatcherBtn.style.color = '#000';
+  }
   dayCurveData = buildDayCurve(task);
   drawChart();
   document.getElementById('kScenario').textContent = task.toUpperCase();
@@ -1075,7 +1084,17 @@ async function step() {
   const d = obs.demand_mwh, r = obs.renewable_availability_mwh, p = obs.peaker_capacity_mwh;
   const scarcity = obs.scarcity_index || 0;
   const actionResp = await api('/act?session_id=' + sessionId, {policy: pol, personality: 'balanced'});
-  const action = {action: actionResp.action};
+  const action = dispatcherEnabled
+    ? {action: actionResp.action}
+    : {
+        action: actionResp.action,
+        dispatch_action: {
+          reserve_activation_mwh: 0,
+          peaker_adjustment_mwh: 0,
+          storage_dispatch_mwh: 0,
+          corrective_redispatch_mwh: 0,
+        },
+      };
 
   const res = await api('/step?session_id=' + sessionId, action);
   const info = res.info, disp = info.dispatch, mkt = info.market;
@@ -1136,7 +1155,7 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   document.getElementById('policyName').textContent = pol.toUpperCase() + ' POLICY';
   const metPct = (rew.demand_satisfaction_score * 100).toFixed(0);
   const penalty = (rew.infeasibility_penalty + rew.blackout_penalty).toFixed(2);
-  document.getElementById('policyReason').textContent = `Demand met ${metPct}% | Scarcity ${Math.round(scarcity * 100)}% | Penalty ${penalty}`;
+  document.getElementById('policyReason').textContent = `Demand met ${metPct}% | Scarcity ${Math.round(scarcity * 100)}% | Penalty ${penalty} | Dispatcher ${dispatcherEnabled ? 'ON' : 'OFF'}`;
   updateScore(rew);
   
   // NEW MODULE UPDATES
@@ -1164,6 +1183,7 @@ document.getElementById('kStep').textContent = (obs.step + 1) + '/' + obs.max_st
   updateInterventions(disp);
   if (disp.emergency_dispatch_triggered) addTimelineEvent(obs.step, 'Emergency dispatch triggered', 'critical');
   if (disp.reserve_commitment_active) addTimelineEvent(obs.step, 'Reserve commitment activated', 'warning');
+  if (info.dispatch_action) addTimelineEvent(obs.step, dispatcherEnabled ? 'Dispatcher corrective action applied' : 'Dispatcher bypassed', dispatcherEnabled ? 'info' : 'warning');
   
   // Add timeline events
   if (scarcity > 0.4) addTimelineEvent(obs.step, 'High demand period detected', 'warning');
@@ -1206,6 +1226,17 @@ async function toggleOverride() {
   log(operatorOverride ? 'Operator override enabled' : 'Operator override disabled', 'info');
 }
 
+function toggleDispatcher() {
+  dispatcherEnabled = !dispatcherEnabled;
+  const btn = document.getElementById('dispatcherBtn');
+  if (btn) {
+    btn.textContent = dispatcherEnabled ? '🧭 DISPATCHER ON' : '🧭 DISPATCHER OFF';
+    btn.style.background = dispatcherEnabled ? 'var(--green)' : '';
+    btn.style.color = dispatcherEnabled ? '#000' : '';
+  }
+  log(dispatcherEnabled ? 'Reliability dispatch control agent enabled' : 'Reliability dispatch control agent bypassed', dispatcherEnabled ? 'info' : 'warn');
+}
+
 async function resilienceDemo() {
   const task = document.getElementById('taskSel').value || 'stress_shock';
   const out = await api('/run-resilience-demo', {task_id: task, seed: 314, baseline_policy: 'random', candidate_policy: 'adaptive'});
@@ -1221,6 +1252,7 @@ document.getElementById('stepBtn').onclick = () => { pause(); step(); };
 document.getElementById('playBtn').onclick = play;
 document.getElementById('pauseBtn').onclick = pause;
 document.getElementById('overrideBtn').onclick = toggleOverride;
+document.getElementById('dispatcherBtn').onclick = toggleDispatcher;
 document.getElementById('shockBtn').onclick = shock;
 document.getElementById('resilienceBtn').onclick = resilienceDemo;
 

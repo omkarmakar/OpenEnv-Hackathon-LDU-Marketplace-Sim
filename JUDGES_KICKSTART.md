@@ -15,7 +15,7 @@ Open:
 
 Use this line first:
 
-> We score grid control outcomes after physical feasibility correction, not just market bid intent.
+> We score grid control outcomes after a dispatcher proposes corrective action and a physics-constrained safety shield enforces feasibility, not just market bid intent.
 
 Architecture phrase set:
 - reliability-aware dispatch
@@ -40,15 +40,20 @@ Architecture phrase set:
   - peaker activation delay behavior
   - startup cost
   - emissions and carbon-cost impact
-  - frequency proxy, line-loading proxy, and stability risk index
+  - frequency proxy, branch-loading proxy, and stability risk index
 
 3) **Trigger stress behavior**
 - Use shock injection (`/inject-shock`) or run through contingency step
 - Explain that contingencies and forecast error channels are part of dynamics, not just UI.
+- Mention the N-1 contingency mode in the outage scenario.
 
 4) **Show operator intervention**
 - Toggle override in UI (or call `/operator-override`)
 - Explain this compares autonomous policy vs human override control mode.
+
+4.5) **Show dispatcher toggle**
+- Flip the dispatcher button in the demo UI.
+- Explain the difference between raw market-clearing output and the explicit Reliability Dispatch Control Agent.
 
 5) **Show resilience story**
 - Call `/run-resilience-demo`
@@ -67,6 +72,7 @@ Architecture phrase set:
 - Mention metrics: cost, blackout rate, constraint violations, emissions, reward, reserve shortfall rate, stability event rate.
   - Mention paired confidence intervals and win-rate evidence for policy comparisons.
   - Mention benchmark scenarios: `normal`, `shock`, `outage`, `renewable_collapse` (`shock` maps to task `stress_shock`).
+  - Mention that `outage` uses an N-1 contingency mode.
 
 ## API Calls You Can Run Live
 
@@ -109,6 +115,7 @@ curl -X POST http://localhost:7860/run-resilience-demo -H "Content-Type: applica
 - Do not claim full AC OPF or full unit commitment.
 - Do not overstate Stackelberg formalism unless providing mathematical proof.
 - Prefer: “leader-signal-influenced bidding.”
+- Prefer: “Physics-Constrained Safety Shield” over generic LDU phrasing in the talk track.
 
 ## Validation Before Judges Arrive
 

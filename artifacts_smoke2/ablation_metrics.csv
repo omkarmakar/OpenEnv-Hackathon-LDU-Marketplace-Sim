@@ -1,0 +1,17 @@
+profile,policy,scenario,task_id,seed_group,episode,rollout_seed,avg_reward,avg_cost_usd,blackout_rate,constraint_violation_rate,emissions_tco2,unmet_energy_mwh,reserve_shortfall_rate,stability_event_rate
+full_ldu,adaptive,normal,normal,0,1,8000,0.349455,21673.586333,0.583333,4.416667,876.92,518.842,0.958333,0.25
+ablate_reserve,adaptive,normal,normal,0,1,8000,0.584498,21673.586333,0.583333,2.333333,876.92,518.842,0.0,0.0
+ablate_ramp,adaptive,normal,normal,0,1,8000,0.349054,21890.217208,0.541667,4.375,908.16,487.172,0.958333,0.25
+ablate_startup_emissions,adaptive,normal,normal,0,1,8000,0.361077,20022.278,0.583333,4.416667,0.0,518.842,0.958333,0.25
+full_ldu,adaptive,shock,stress_shock,0,1,8000,0.16777,1301.792467,1.0,5.033333,0.0,3947.012,1.0,1.0
+ablate_reserve,adaptive,shock,stress_shock,0,1,8000,0.366369,1301.792467,1.0,3.033333,0.0,3947.012,0.0,0.966667
+ablate_ramp,adaptive,shock,stress_shock,0,1,8000,0.167807,1301.792467,1.0,5.0,0.0,3947.012,1.0,1.0
+ablate_startup_emissions,adaptive,shock,stress_shock,0,1,8000,0.16777,1301.792467,1.0,5.033333,0.0,3947.012,1.0,1.0
+full_ldu,adaptive,outage,outage,0,1,8000,0.174437,1831.957433,1.0,5.0,0.0,3575.377,1.0,1.0
+ablate_reserve,adaptive,outage,outage,0,1,8000,0.378627,1831.957433,1.0,3.0,0.0,3575.377,0.0,0.766667
+ablate_ramp,adaptive,outage,outage,0,1,8000,0.174508,1831.957433,1.0,4.966667,0.0,3575.377,1.0,1.0
+ablate_startup_emissions,adaptive,outage,outage,0,1,8000,0.174437,1831.957433,1.0,5.0,0.0,3575.377,1.0,1.0
+full_ldu,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.168696,1398.1624,1.0,5.033333,0.0,3815.171,1.0,1.0
+ablate_reserve,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.368407,1398.1624,1.0,3.033333,0.0,3815.171,0.0,0.966667
+ablate_ramp,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.16874,1398.1624,1.0,5.0,0.0,3815.171,1.0,1.0
+ablate_startup_emissions,adaptive,renewable_collapse,renewable_collapse,0,1,8000,0.168696,1398.1624,1.0,5.033333,0.0,3815.171,1.0,1.0

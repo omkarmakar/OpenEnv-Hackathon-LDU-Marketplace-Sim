@@ -46,12 +46,19 @@ def evolve_grid(
     forecast_renewable = max(0.0, next_renewable + rng.gauss(0.0, task.renewable_forecast_sigma))
     peaker_capacity_multiplier = 1.0
     transmission_loss_multiplier = 1.0
+    n1_component = "none"
     if contingency_active:
         derate = max(0.0, min(task.contingency_derate_pct, 0.95))
         if task.contingency_type == "peaker_trip":
             peaker_capacity_multiplier = 1.0 - derate
         elif task.contingency_type == "transmission_derate":
             transmission_loss_multiplier = 1.0 + derate
+        elif task.contingency_type in {"n_minus_one", "n1_outage"}:
+            n1_component = rng.choice(["generator", "feeder"])
+            if n1_component == "generator":
+                peaker_capacity_multiplier = 1.0 - derate
+            else:
+                transmission_loss_multiplier = 1.0 + derate
 
     scarcity_ratio = max(0.0, (next_demand - next_renewable) / 300.0)
     implied_price = base_price_usd_per_mwh * (1.0 + scarcity_ratio)
@@ -65,6 +72,7 @@ def evolve_grid(
             "shock_active": shock_active,
             "contingency_active": contingency_active,
             "contingency_type": task.contingency_type if contingency_active else "none",
+            "n1_component": n1_component,
             "peaker_capacity_multiplier": round(peaker_capacity_multiplier, 4),
             "transmission_loss_multiplier": round(transmission_loss_multiplier, 4),
             "demand_noise": round(demand_noise, 3),

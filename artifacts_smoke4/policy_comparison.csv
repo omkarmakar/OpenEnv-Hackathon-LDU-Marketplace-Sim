@@ -1,0 +1,13 @@
+policy,scenario,task_id,avg_reward,avg_reward_std,avg_cost_usd,avg_cost_usd_std,blackout_rate,blackout_rate_std,constraint_violation_rate,constraint_violation_rate_std,emissions_tco2,emissions_tco2_std,reserve_shortfall_rate,reserve_shortfall_rate_std,stability_event_rate,stability_event_rate_std
+random,normal,normal,0.560926,0.0,14438.823958,0.0,1.0,0.0,3.375,0.0,886.2476,0.0,0.0,0.0,0.0,0.0
+heuristic,normal,normal,0.550981,0.0,15673.151542,0.0,0.916667,0.0,2.416667,0.0,891.0376,0.0,0.0,0.0,0.0,0.0
+adaptive,normal,normal,0.577281,0.0,30035.995875,0.0,0.291667,0.0,2.333333,0.0,1216.3361,0.0,0.0,0.0,0.0,0.0
+random,shock,stress_shock,0.561049,0.0,24781.9703,0.0,0.9,0.0,3.3,0.0,1803.5966,0.0,0.0,0.0,0.0,0.0
+heuristic,shock,stress_shock,0.568251,0.0,27039.9803,0.0,0.966667,0.0,2.3,0.0,1788.3799,0.0,0.0,0.0,0.0,0.0
+adaptive,shock,stress_shock,0.561614,0.0,44440.774767,0.0,0.4,0.0,2.666667,0.0,2149.5547,0.0,0.0,0.0,0.0,0.0
+random,outage,outage,0.557455,0.0,19995.340933,0.0,0.966667,0.0,3.3,0.0,1471.1724,0.0,0.0,0.0,0.0,0.0
+heuristic,outage,outage,0.552062,0.0,21770.806133,0.0,0.9,0.0,2.3,0.0,1462.5039,0.0,0.0,0.0,0.0,0.0
+adaptive,outage,outage,0.556116,0.0,38057.1585,0.0,0.3,0.0,2.433333,0.0,1861.144,0.0,0.0,0.0,0.0,0.0
+random,renewable_collapse,renewable_collapse,0.569769,0.0,24776.842533,0.0,0.933333,0.0,3.3,0.0,1805.9259,0.0,0.0,0.0,0.0,0.0
+heuristic,renewable_collapse,renewable_collapse,0.565603,0.0,26342.285933,0.0,0.966667,0.0,2.333333,0.0,1764.194,0.0,0.0,0.0,0.0,0.0
+adaptive,renewable_collapse,renewable_collapse,0.545618,0.0,42909.862633,0.0,0.333333,0.0,2.766667,0.0,2097.5798,0.0,0.0,0.0,0.0,0.0

@@ -26,6 +26,13 @@ class JointAction(BaseModel):
     ev_discharge_mwh: float = Field(0.0, ge=0.0, description="EV fleet discharge command")
 
 
+class DispatchAction(BaseModel):
+    reserve_activation_mwh: float = Field(0.0, ge=0.0, description="Reserve activation target")
+    peaker_adjustment_mwh: float = Field(0.0, description="Peaker redispatch adjustment")
+    storage_dispatch_mwh: float = Field(0.0, description="Signed storage dispatch adjustment")
+    corrective_redispatch_mwh: float = Field(0.0, description="Signed corrective redispatch adjustment")
+
+
 class MarketObservation(BaseModel):
     step: int
     steps_taken: int
@@ -81,6 +88,7 @@ class ResetResponse(BaseModel):
 
 class StepRequest(BaseModel):
     action: JointAction
+    dispatch_action: Optional[DispatchAction] = None
 
 
 class StepResponse(BaseModel):
