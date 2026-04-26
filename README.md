@@ -1,129 +1,531 @@
-# OpenEnv Smart Grid MarketSim
+---
+title: OpenEnv SmartGrid MarketSim
+emoji: ⚡
+colorFrom: green
+colorTo: blue
+sdk: docker
+pinned: false
+---
+# OpenEnv SmartGrid MarketSim
 
-Multi-agent electricity market simulation with an explicit Reliability Dispatch Control Agent, a Physics-Constrained Safety Shield, reliability constraints, contingency handling, forecast uncertainty, and emissions-aware optimization.
+## In this market, physics has veto power.
 
-## What Makes This Different
+**Power markets optimize economics. Grid operators preserve stability. Physics enforces hard limits.**
+**OpenEnv SmartGrid MarketSim is a reinforcement learning environment where all three collide — and agents learn whether the grid survives.**
 
-Most market environments score bid intent.  
-This environment scores **physically delivered outcomes after dispatch correction**.
+OpenEnv SmartGrid MarketSim is a **multi-agent reinforcement learning environment** for training reliability-aware agents in strategic electricity markets under uncertainty, contingencies, and physical constraints.
 
-Core loop:
-1. Agents submit bids and EV actions
-2. Market clearing produces economic intent
-3. Reliability Dispatch Control Agent proposes corrective dispatch
-4. Physics-Constrained Safety Shield enforces physical feasibility (including reserve/ramp/startup constraints)
-5. Reward is computed with reliability-first hierarchy
-6. Dynamics evolve demand/renewables/price with uncertainty and contingencies
+This is not a toy market simulator.
 
-## Current Capability Snapshot
+It is a **training ground for resilient infrastructure intelligence.**
 
-- **Market layer:** leader-signal-influenced bid clearing
-- **Control layer:** Reliability Dispatch Control Agent with explicit corrective dispatch action space
-- **Physical layer (Physics-Constrained Safety Shield):**
-  - SOC limits and charge/discharge consistency
-  - transmission/storage losses
-  - reserve requirement and reserve shortfall tracking
-  - ramp-rate constraints for peaker and EV discharge
-  - peaker startup cost accounting
-  - emissions and carbon-cost accounting
-  - frequency and branch-loading consequence coupling
-  - reserve commitment gate and emergency dispatch trigger path
-  - peaker activation delay semantics (task-configurable)
-- **Uncertainty and resilience:**
-  - stochastic demand/renewable evolution
-  - forecast-vs-realized channels
-  - contingency events (`peaker_trip`, `transmission_derate`, `n_minus_one`)
-- **Reward design:** reliability-first hierarchical scoring
-- **Evaluation:** policy x scenario x seed comparison artifacts for cost/blackouts/violations/emissions/reserve shortfall/stability events
-- **Demo:** operator override and resilience scenario endpoint
+Agents do not merely learn how to maximize reward.
+They learn how to:
 
-## Scenarios
+* Coordinate under conflicting incentives
+* Respond to shocks and outages
+* Preserve grid reliability under stress
+* Optimize within physical feasibility limits
+* Balance economic strategy with system resilience
 
-- `default`
-- `long_horizon`
-- `stress_shock`
-- `normal`
-- `outage`
-- `renewable_collapse`
+---
 
-Each scenario contains task-specific reserve/ramp/startup/carbon/forecast/contingency settings.
+# Why This Environment Exists
 
-Benchmark protocol labels used in reports:
-- `normal` -> task `normal`
-- `shock` -> task `stress_shock`
-- `outage` -> task `outage`
-- `renewable_collapse` -> task `renewable_collapse`
+Modern power systems face a structural intelligence problem.
 
-## API Endpoints
+Markets optimize price.
+Control systems optimize stability.
+Operators manage emergencies.
 
-- `GET /health`
-- `POST /reset`
-- `POST /step`
-- `POST /act`
-- `GET /state`
-- `GET /events`
-- `GET /events/stream`
-- `POST /inject-shock`
-- `POST /operator-override`
-- `POST /dispatch-act`
-- `GET /info`
-- `POST /run-inference`
-- `POST /run-demo-mode`
-- `POST /run-resilience-demo`
-- `GET /demo`
+Real grids require all three simultaneously.
 
-`/run-demo-mode` and the interactive demo support a dispatcher toggle so you can compare runs with and without the control agent.
+Most existing learning environments isolate these challenges.
+This environment combines them.
 
-`/run-resilience-demo` now reports trajectory-level resilience deltas:
-- `blackout_step_delta`
-- `reserve_activation_delta`
-- `emergency_dispatch_delta`
-- `stability_event_delta`
+## Core Hypothesis
 
-## Quickstart
+**If agents train in a world where economic strategy is filtered through dispatch intelligence and hard physical constraints, they can learn reliability-aware strategic behavior instead of brittle reward maximization.**
 
-```powershell
+That is the problem this benchmark targets.
+
+---
+
+# What Makes This Environment Novel
+
+This environment combines three interacting intelligence layers.
+
+## 1. Strategic Multi-Agent Electricity Market
+
+Agents participate as:
+
+* Renewable prosumers
+* Industrial load participants
+* Peaker generators
+* Flexible EV storage resources
+
+Agents submit bids and interact through strategic market clearing influenced by leader price signals.
+
+This creates a partially cooperative, partially competitive game.
+
+---
+
+## 2. Reliability Dispatch Control Agent
+
+A dedicated dispatch intelligence layer observes:
+
+* Scarcity conditions
+* Forecast gaps
+* Reserve risks
+* Contingencies
+* Renewable uncertainty
+
+It intervenes through:
+
+* Reserve activation
+* Corrective redispatch
+* Storage balancing
+* Peaker adjustments
+* Emergency support actions
+
+This turns the environment into more than a market.
+It becomes a reliability coordination game.
+
+---
+
+## 3. Physics-Constrained Safety Shield
+
+All proposed actions pass through a safety layer enforcing:
+
+* EV SOC bounds
+* Ramp-rate constraints
+* Reserve adequacy
+* Frequency and line-loading proxies
+* Emergency support logic
+* Constraint correction and feasibility enforcement
+
+Policies may propose.
+Physics decides.
+
+Unsafe strategies cannot exploit the environment.
+
+---
+
+# Environment Architecture
+
+Each environment step executes:
+
+1. Policy Action Selection
+2. Market Clearing
+3. Dispatch Control Decision
+4. Physics Safety Enforcement
+5. Reward Computation
+6. State Evolution Under Uncertainty
+
+This creates a closed-loop strategic learning system.
+
+```text
+Policy Actions
+   ↓
+Market Clearing
+   ↓
+Dispatch Control Agent
+   ↓
+Physics Safety Shield
+   ↓
+Reward Computation
+   ↓
+State Evolution
+```
+
+---
+
+# What Agents Learn
+
+Agents are not trained to optimize price alone.
+
+They learn tradeoffs among:
+
+* Reliability
+* Cost efficiency
+* Stability
+* Reserve adequacy
+* Renewable utilization
+* Constraint compliance
+
+Sometimes the profitable move loses.
+The resilient move wins.
+
+That is deliberate.
+
+---
+
+# Reward Design
+
+Reward is structured as staged rubrics.
+
+## Reliability Stage
+
+Can the grid remain operational?
+
+## Service Stage
+
+Is demand satisfied?
+
+## Optimization Stage
+
+Is dispatch economically efficient?
+
+## Stability Stage
+
+Are system risks controlled?
+
+Final rewards incorporate anti-hacking penalties for:
+
+* Blackouts
+* Constraint violations
+* Reserve shortfalls
+* Unsafe exploitation
+* Stability failures
+
+High-level reward structure:
+
+```text
+Reward = Reliability
+       + Service
+       + Optimization
+       + Stability
+       - Safety Penalties
+```
+
+This prevents single-metric reward hacking.
+Agents must learn robust behavior.
+
+---
+
+# RL Training in the Environment
+
+This environment is built not only for simulation, but for training.
+
+Current training stack includes:
+
+* OpenEnv interaction loop
+* Hugging Face TRL
+* GRPO-style reinforcement optimization
+* Curriculum learning across stress scenarios
+* Multi-agent policy benchmarking
+
+Policy comparisons include:
+
+* Random baseline
+* Heuristic policies
+* Adaptive policies
+* Trained RL agents
+
+Training evaluates improvement through:
+
+* Cumulative reward growth
+* Blackout reduction
+* Reserve shortfall reduction
+* Stability-event reduction
+* Candidate vs baseline win rates
+
+Success is defined by improved behavior inside the environment.
+
+Not better text outputs.
+Better policies.
+
+---
+
+# OpenEnv Themes Alignment
+
+This environment spans multiple OpenEnv hackathon themes.
+
+## Theme #1 — Multi-Agent Interactions
+
+Strategic bidding, negotiation, competition and coordination.
+
+## Theme #2 — Long-Horizon Planning
+
+Delayed consequences, contingency response and long-horizon resilience.
+
+## Theme #3 — World Modeling
+
+Partial observability, tool-like control interaction, dynamic infrastructure simulation.
+
+---
+
+# Environment Tasks
+
+## default
+
+Standard strategic bidding with reliability-aware dispatch.
+
+## long_horizon
+
+Longer planning horizons with delayed system effects.
+
+## stress_shock
+
+Shock-heavy reliability stress testing.
+
+## outage
+
+N-1 style outage and contingency scenarios.
+
+## renewable_collapse
+
+Severe renewable drop and forecast error regimes.
+
+These scenarios test both optimization and resilience.
+
+---
+
+# Example Observation Signals
+
+Agents observe:
+
+* Demand levels
+* Renewable availability
+* Scarcity index
+* Clearing prices
+* Reserve conditions
+* Forecast errors
+* Contingency flags
+* Stability risk indicators
+
+This supports strategic reasoning under uncertainty.
+
+---
+
+# Example Action Space
+
+Joint actions include:
+
+* Strategic supply and demand bids
+* EV charge / discharge decisions
+* Reserve activation
+* Storage dispatch
+* Corrective redispatch
+
+Multi-agent strategy and operational control coexist.
+
+---
+
+# Safety Constraints Enforced
+
+Physics shield enforces:
+
+* No infeasible dispatch
+* No simultaneous charge/discharge exploits
+* Ramp limits respected
+* Reserve commitments maintained
+* Emergency support triggered when necessary
+
+Learned policies cannot bypass safety.
+
+---
+
+# Benchmark Evidence
+
+Evaluation artifacts include:
+
+* Reward curves
+* Policy comparisons
+* Ablation results
+* Resilience stress benchmarks
+* Pairwise policy win-rate analysis
+* Trajectory and metrics artifacts
+
+## Example Metrics
+
+| Metric                | Baseline | Trained Agent | Goal     |
+| --------------------- | -------- | ------------- | -------- |
+| Average Reward        | --       | --            | Increase |
+| Blackout Rate         | --       | --            | Reduce   |
+| Reserve Shortfalls    | --       | --            | Reduce   |
+| Stability Events      | --       | --            | Reduce   |
+| Constraint Violations | --       | --            | Reduce   |
+
+---
+
+# Demo Walkthrough
+
+Recommended judge walkthrough:
+
+## 1. Normal Market Scenario
+
+Show strategic equilibrium and reliability telemetry.
+
+## 2. Inject Shock
+
+Trigger renewable collapse or contingency.
+
+Show stress emergence.
+
+## 3. Safety Shield Intervention
+
+Demonstrate physics-corrected behavior.
+
+## 4. Baseline vs Trained Agent
+
+Show measurable improvement.
+
+The objective is not only to show the environment runs.
+
+It is to show learning.
+
+---
+
+# Why This Matters
+
+This environment studies a broader question:
+
+**Can intelligent agents learn strategic behavior under economic incentives while respecting hard safety constraints?**
+
+Power systems are the domain.
+Reliability-aware intelligence is the larger problem.
+
+Potential applications:
+
+* Smart-grid autonomy
+* Infrastructure agents
+* Safe multi-agent RL
+* Cyber-physical agent training
+* Reliability-constrained autonomous systems
+
+---
+
+# Repository Layout
+
+```text
+main.py
+openenv.yaml
+smartgrid_mas/
+ ├── env.py
+ ├── tasks.py
+ ├── models.py
+ ├── engine/
+ │    ├── market.py
+ │    ├── control.py
+ │    ├── ldu.py
+ │    ├── reward.py
+ │    └── dynamics.py
+tests/
+artifacts/
+```
+
+---
+
+# Quick Start
+
+## Install
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -e .
+```
+
+---
+
+## Start Server
+
+```bash
 python main.py
 ```
 
-Open:
-- API docs: `http://localhost:7860/docs`
-- Demo UI: `http://localhost:7860/demo`
+Default endpoints:
 
-## Evaluation Artifacts
+* API: [http://localhost:7860](http://localhost:7860)
+* Docs: [http://localhost:7860/docs](http://localhost:7860/docs)
+* Demo: [http://localhost:7860/demo](http://localhost:7860/demo)
 
-Run baseline evaluation matrix:
+---
 
-```powershell
-python -m smartgrid_mas.train_baseline --episodes 12 --seeds 10 --bootstrap-samples 1000 --outdir artifacts
+# Run Example
+
+Reset environment:
+
+```bash
+curl -X POST http://localhost:7860/reset \
+-H "Content-Type: application/json" \
+-d '{"task_id":"stress_shock","seed":42}'
 ```
 
-Generated outputs:
-- `artifacts/baseline_metrics.csv` (detailed rows)
-- `artifacts/policy_comparison.csv` (aggregated metrics with mean/std)
-- `artifacts/policy_comparison.md` (judge-readable table)
-- `artifacts/policy_pairwise_deltas.csv` (paired deltas + bootstrap 95% CI)
-- `artifacts/policy_win_rates.md` (scenario-wise win-rate table)
-- `artifacts/ablation_metrics.csv` (adaptive policy under LDU ablation profiles)
-- `artifacts/ablation_comparison.md` (full-vs-ablated summary table)
-- `artifacts/resilience_stress_benchmark.md` (protocol + findings)
-- `artifacts/reward_comparison.png` (reward curves)
+Run deterministic demo:
 
-## Tests
+```bash
+curl -X POST http://localhost:7860/run-demo-mode
+```
 
-```powershell
+Run resilience comparison:
+
+```bash
+curl -X POST http://localhost:7860/run-resilience-demo
+```
+
+---
+
+# Training & Benchmarking
+
+Generate deterministic artifacts:
+
+```bash
+generate-demo-artifacts
+```
+
+Run resilience benchmark:
+
+```bash
+train-baseline
+```
+
+Run tests:
+
+```bash
 pytest -q
 ```
 
-Coverage includes:
-- market + dispatch invariants
-- reward bounds and consistency
-- unsafe trajectory scoring lower than stable trajectory
-- deterministic seeded regression
+---
 
-## Notes
+# OpenEnv Compliance
 
-- UI prices may be displayed in INR-equivalent for readability.
-- Internal API/economics fields remain model units (`*_usd_per_mwh`) for compatibility.
-- For judging walkthrough, use `JUDGES_KICKSTART.md`.
+Includes:
+
+* OpenEnv-compatible environment interface
+* reset / step / state API
+* openenv.yaml metadata
+* Hosted Space deployment
+* RL training integration support
+* Reproducible benchmark artifacts
+
+---
+
+# Research Framing
+
+This project can be viewed as a benchmark for:
+
+* Safety-shielded RL
+* Reliability-aware multi-agent intelligence
+* Strategic infrastructure world modeling
+* Reward-hacking resistant environment design
+
+It is not merely a simulator.
+
+It is a trainable environment for studying resilient intelligence.
+
+---
+
+# Closing Thought
+
+Most reinforcement learning environments teach agents how to optimize.
+
+This environment asks whether agents can learn how to preserve critical systems under uncertainty.
+
+That is the benchmark.
+That is the experiment.
+That is OpenEnv SmartGrid MarketSim.
+
+
+write this in the readme file
