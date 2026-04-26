@@ -527,5 +527,3 @@ That is the benchmark.
 That is the experiment.
 That is OpenEnv SmartGrid MarketSim.
 
-
-write this in the readme file
